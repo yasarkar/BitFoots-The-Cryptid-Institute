@@ -69,14 +69,14 @@ export async function POST(req: NextRequest) {
 
     const durationMs = endTime - startTime;
     const sectorConfig = SECTORS[chapterId] || SECTORS[1];
-    const minFloorMs = (sectorConfig.minCompletionSeconds || 12) * 1000;
+    const minFloorMs = 2000; // 2 seconds minimum floor to guard against instant script spam while allowing fast clears
 
     // 2. Anti-cheat minimum duration check
     if (durationMs < minFloorMs) {
       return NextResponse.json(
         {
           success: false,
-          error: `Invalid clearance duration: Sector ${chapterId} cannot be legitimately surveyed under ${sectorConfig.minCompletionSeconds}s.`,
+          error: `Invalid clearance duration: Sector ${chapterId} survey telemetry is too fast (${Math.round(durationMs)}ms).`,
           durationMs,
         },
         { status: 400 }

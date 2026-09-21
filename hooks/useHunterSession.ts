@@ -157,6 +157,13 @@ export function useHunterSession() {
         unlockedSectors: initialClearances,
       };
       setProfile(activeProfile);
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(activeProfile));
+        } catch (err) {
+          console.error("Failed to save initial guest session:", err);
+        }
+      }
       gameEventBus.emit("AVATAR_CHANGED", { avatarUrl: guestAvatar });
     }
 

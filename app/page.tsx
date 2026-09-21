@@ -102,6 +102,15 @@ export default function GamePage() {
     }
   }, [sessionLoading, profile.isLoggedIn]);
 
+  // Synchronize active hunter profile to localStorage for Phaser scenes & API routes
+  useEffect(() => {
+    if (profile.userId && typeof window !== "undefined") {
+      try {
+        localStorage.setItem("bitfoot_hunter_guest_session", JSON.stringify(profile));
+      } catch {}
+    }
+  }, [profile]);
+
   // UI Theme & Modals State
   const {
     settings,
@@ -344,6 +353,67 @@ export default function GamePage() {
     [activeChapter]
   );
 
+
+  // Active gameplay tracking: true when expedition is in-progress and no modal/game-over/finish is active
+  const isGameActive =
+    isGameStarted &&
+    !gameOverReason &&
+    !finishedData &&
+    !loreModalData &&
+    !isEntryGateOpen &&
+    !isLeaderboardOpen &&
+    !isDossierOpen &&
+    !isProfileOpen &&
+    !isSettingsOpen &&
+    !isExportCardModalOpen;
+
+  // Keep page fixed and prevent Space key (and arrows/pagedown) from scrolling during active gameplay
+  useEffect(() => {
+    const handlePreventScrollKeys = (e: KeyboardEvent) => {
+      // Do not block keys if an input or textarea is active
+      const activeTag = (document.activeElement?.tagName || "").toLowerCase();
+      const isInput =
+        activeTag === "input" ||
+        activeTag === "textarea" ||
+        (document.activeElement as HTMLElement)?.isContentEditable;
+
+      if (isInput) return;
+
+      // In Sector 3 (or whenever game is active), Space fires Sonar ping without scrolling page down
+      if (e.code === "Space" || e.key === " " || e.key === "Spacebar" || e.keyCode === 32) {
+        e.preventDefault();
+      }
+
+      // If expedition is active, prevent arrow keys and page navigation from scrolling the page
+      if (isGameActive) {
+        if (
+          e.code === "ArrowUp" ||
+          e.code === "ArrowDown" ||
+          e.code === "PageUp" ||
+          e.code === "PageDown"
+        ) {
+          e.preventDefault();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handlePreventScrollKeys, { capture: true, passive: false });
+
+    // Lock body and html scroll during active expedition to keep page stationary
+    if (isGameActive) {
+      document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+    }
+
+    return () => {
+      window.removeEventListener("keydown", handlePreventScrollKeys, { capture: true });
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+    };
+  }, [isGameActive]);
 
   // Keyboard shortcut 'R' to quick reload / restart expedition
   useEffect(() => {
@@ -1127,6 +1197,7 @@ export default function GamePage() {
       onSelectChapter={handleSwitchChapter}
       isBlurred={isEntryGateOpen}
       unlockedSectors={Array.from(new Set([...(profile.unlockedSectors || [1]), activeChapter]))}
+      isHoverDisabled={isGameActive}
     />
 
 

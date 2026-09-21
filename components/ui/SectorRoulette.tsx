@@ -153,6 +153,7 @@ interface SectorRouletteProps {
   onSelectChapter: (chapterId: 1 | 2 | 3) => void;
   isBlurred?: boolean;
   unlockedSectors?: number[];
+  isHoverDisabled?: boolean;
 }
 
 interface DialNotice {
@@ -165,6 +166,7 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
   onSelectChapter,
   isBlurred = false,
   unlockedSectors = [1],
+  isHoverDisabled = false,
 }) => {
   const [isHovered, setIsHovered] = useState<boolean>(false);
   const [isMobileOpen, setIsMobileOpen] = useState<boolean>(false);
@@ -193,7 +195,7 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
   const mouseLeaveTimeoutRef = useRef<number | null>(null);
 
   const isArmMoving = armTargetId !== null;
-  const isExpanded = isHovered || isArmMoving;
+  const isExpanded = !isHoverDisabled && (isHovered || isArmMoving);
   const armGlideMs = prefersReducedMotion ? ARM_GLIDE_REDUCED_MS : ARM_GLIDE_MS;
 
   const currentSector =
@@ -245,6 +247,19 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
     hoveredRef.current = null;
   }, [isBlurred]);
 
+  // Collapse and clear hover when hover is disabled during active gameplay (no visual freeze, just hover disabled)
+  useEffect(() => {
+    if (isHoverDisabled) {
+      setIsHovered(false);
+      setHoveredSectorId(null);
+      hoveredRef.current = null;
+      if (mouseLeaveTimeoutRef.current) {
+        window.clearTimeout(mouseLeaveTimeoutRef.current);
+        mouseLeaveTimeoutRef.current = null;
+      }
+    }
+  }, [isHoverDisabled]);
+
   /* --------------------------------------------------------------- Handlers */
 
   const pushNotice = useCallback((text: string, tone: DialNotice["tone"]) => {
@@ -254,6 +269,7 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
   }, []);
 
   const handleMouseEnter = () => {
+    if (isHoverDisabled) return;
     if (mouseLeaveTimeoutRef.current) {
       window.clearTimeout(mouseLeaveTimeoutRef.current);
       mouseLeaveTimeoutRef.current = null;
@@ -273,6 +289,7 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
   };
 
   const handleSectorHover = (sectorId: number) => {
+    if (isHoverDisabled) return;
     if (hoveredRef.current !== sectorId) {
       hoveredRef.current = sectorId;
       audioManager.playRouletteTick();
@@ -286,7 +303,7 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
   };
 
   const handleSectorClick = (sector: SectorItem) => {
-    if (isArmMoving) return;
+    if (isHoverDisabled || isArmMoving) return;
 
     const chapter = sector.chapter;
 
@@ -330,6 +347,7 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
   // Keyboard shortcut navigation (1 to 5)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isHoverDisabled) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
       const numKey = parseInt(e.key, 10);
@@ -341,7 +359,7 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleSectorClick, sectorList]);
+  }, [handleSectorClick, sectorList, isHoverDisabled]);
 
 
   /* ------------------------------------------------ Render Components */
@@ -628,7 +646,7 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
 
           const isUnlocked = sector.isUnlocked;
           const isActive = activeChapter === sector.chapter;
-          const isHoveredSlice = hoveredSectorId === sector.id && !isBlurred;
+          const isHoveredSlice = !isHoverDisabled && hoveredSectorId === sector.id && !isBlurred;
           const isRejected = rejectedSectorId === sector.id;
           const isArmTarget = armTargetId === sector.id;
 
@@ -1087,8 +1105,10 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
         className={`fixed right-0 top-1/2 z-30 hidden -translate-y-1/2 select-none md:flex items-center justify-end transition-all duration-400 ease-out ${
           isExpanded
             ? "w-[260px] h-[520px] drop-shadow-[-22px_0_44px_rgba(0,0,0,0.95)]"
-            : "w-[185px] h-[370px] drop-shadow-[-12px_0_24px_rgba(0,0,0,0.85)] cursor-pointer"
-        } ${isBlurred ? "pointer-events-none brightness-25 filter blur-md" : ""}`}
+            : "w-[185px] h-[370px] drop-shadow-[-12px_0_24px_rgba(0,0,0,0.85)]"
+        } ${isHoverDisabled ? "pointer-events-none cursor-default" : "cursor-pointer"} ${
+          isBlurred ? "pointer-events-none brightness-25 filter blur-md" : ""
+        }`}
       >
         <div className="relative flex h-full w-full items-center justify-end overflow-visible">
           {/* Desktop Holographic Dossier HUD Slip (Sits directly left of the dial) */}
@@ -1133,7 +1153,7 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
       {/* ===================================================================== */}
       <div className="block md:hidden">
         {/* Floating Action Radar Trigger (Bottom Right of screen) */}
-        {!isBlurred && (
+        {!isBlurred && !isHoverDisabled && (
           <button
             type="button"
             onClick={() => setIsMobileOpen(true)}

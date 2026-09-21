@@ -303,17 +303,30 @@ export abstract class BaseSectorScene extends Phaser.Scene {
       if (stored) sessionProfile = JSON.parse(stored);
     } catch {}
 
-    const validUserId =
-      sessionProfile?.userId &&
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-        sessionProfile.userId
+    let validUserId = sessionProfile?.userId;
+    if (
+      !validUserId ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        validUserId
       )
-        ? sessionProfile.userId
-        : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-            const r = (Math.random() * 16) | 0;
-            const v = c === "x" ? r : (r & 0x3) | 0x8;
-            return v.toString(16);
-          });
+    ) {
+      validUserId = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+        const r = (Math.random() * 16) | 0;
+        const v = c === "x" ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+      });
+
+      // Save generated guest ID to localStorage so future runs and leaderboard queries match
+      sessionProfile = {
+        ...(sessionProfile || {}),
+        userId: validUserId,
+        username: sessionProfile?.username || "Guest_Hunter",
+        isGuest: sessionProfile?.isGuest ?? true,
+      };
+      try {
+        localStorage.setItem("bitfoot_hunter_guest_session", JSON.stringify(sessionProfile));
+      } catch {}
+    }
 
     try {
       const res = await fetch("/api/chapter/complete", {
@@ -329,6 +342,7 @@ export abstract class BaseSectorScene extends Phaser.Scene {
           startTime: this.startTime,
           endTime,
           collectedIds: this.collectedIds,
+          foundSecretSilhouette: (this as any).foundSecretSilhouette ?? false,
           gateAnswerIndex: data.selectedOptionIndex,
         }),
       });
