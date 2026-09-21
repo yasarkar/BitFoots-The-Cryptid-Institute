@@ -7,6 +7,9 @@ import {
   signInWithGoogle,
   signOutUser,
   isSupabaseConfigured,
+  fetchHunterProfile,
+  saveHunterProgress,
+  isValidUuid,
 } from "@/lib/supabaseClient";
 import { gameEventBus } from "@/lib/eventBus";
 
@@ -23,7 +26,6 @@ export interface HunterProfile {
 
 const GUEST_STORAGE_KEY = "bitfoot_hunter_guest_session";
 const CLEARANCES_STORAGE_KEY = "bitfoot_hunter_unlocked_sectors";
-
 
 function extractUsername(userMeta: any, userId: string): string {
   if (userMeta?.user_name) {
@@ -83,7 +85,9 @@ function getStoredClearances(): number[] {
     if (raw) {
       const arr = JSON.parse(raw);
       if (Array.isArray(arr) && arr.length > 0) {
-        return Array.from(new Set([1, ...arr.filter((n) => typeof n === "number")]));
+        return Array.from(new Set([1, ...arr.filter((n) => typeof n === "number")])).sort(
+          (a, b) => a - b
+        );
       }
     }
   } catch {}
@@ -117,16 +121,17 @@ export function useHunterSession() {
               restoredAvatar = getDefaultBitfootAvatar(parsed.username || parsed.userId);
             }
             activeProfile = {
-              userId: parsed.userId || generateGuestUuid(),
+              userId: isValidUuid(parsed.userId) ? parsed.userId : generateGuestUuid(),
               username: parsed.username,
               avatarUrl: restoredAvatar,
               isGuest: parsed.isGuest ?? false,
               isLoggedIn: true,
               zcashAddress: parsed.zcashAddress || "",
               authProvider: parsed.authProvider || (parsed.isGuest ? "guest" : undefined),
-              unlockedSectors: Array.isArray(parsed.unlockedSectors) && parsed.unlockedSectors.length > 0
-                ? Array.from(new Set([...initialClearances, ...parsed.unlockedSectors]))
-                : initialClearances,
+              unlockedSectors:
+                Array.isArray(parsed.unlockedSectors) && parsed.unlockedSectors.length > 0
+                  ? Array.from(new Set([...initialClearances, ...parsed.unlockedSectors])).sort((a, b) => a - b)
+                  : initialClearances,
             };
           }
         }
@@ -141,7 +146,7 @@ export function useHunterSession() {
     } else {
       const guestUuid = generateGuestUuid();
       const guestAvatar = getDefaultBitfootAvatar(guestUuid);
-      setProfile({
+      activeProfile = {
         userId: guestUuid,
         username: "",
         avatarUrl: guestAvatar,
@@ -150,13 +155,14 @@ export function useHunterSession() {
         zcashAddress: "",
         authProvider: "guest",
         unlockedSectors: initialClearances,
-      });
+      };
+      setProfile(activeProfile);
       gameEventBus.emit("AVATAR_CHANGED", { avatarUrl: guestAvatar });
     }
 
-    // Check Supabase Auth if configured
+    // Synchronize profile and progress with Supabase
     if (isSupabaseConfigured && supabase) {
-      supabase.auth.getSession().then(({ data: { session } }) => {
+      supabase.auth.getSession().then(async ({ data: { session } }) => {
         if (session?.user) {
           const userMeta = session.user.user_metadata;
           const username = extractUsername(userMeta, session.user.id);
@@ -169,27 +175,58 @@ export function useHunterSession() {
               ? "google"
               : undefined;
 
+          // Fetch cloud progress from Supabase
+          const cloudProfile = await fetchHunterProfile(session.user.id);
+          const cloudSectors: number[] = Array.isArray(cloudProfile?.unlocked_sectors)
+            ? cloudProfile.unlocked_sectors
+            : [];
+
+          const mergedSectors = Array.from(
+            new Set([...initialClearances, ...cloudSectors, 1])
+          ).sort((a, b) => a - b);
+
           const authProfile: HunterProfile = {
             userId: session.user.id,
-            username,
-            avatarUrl,
+            username: cloudProfile?.x_username || username,
+            avatarUrl: cloudProfile?.x_avatar_url || avatarUrl,
             isGuest: false,
             isLoggedIn: true,
-            zcashAddress: (userMeta as any)?.zcash_address || "",
+            zcashAddress: cloudProfile?.zcash_address || (userMeta as any)?.zcash_address || "",
             authProvider,
-            unlockedSectors: initialClearances,
+            unlockedSectors: mergedSectors,
           };
+
           setProfile(authProfile);
-          gameEventBus.emit("AVATAR_CHANGED", { avatarUrl });
+          gameEventBus.emit("AVATAR_CHANGED", { avatarUrl: authProfile.avatarUrl });
+
           try {
             localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(authProfile));
+            localStorage.setItem(CLEARANCES_STORAGE_KEY, JSON.stringify(mergedSectors));
           } catch {}
+
+          // Ensure Supabase has the latest merged clearances
+          if (mergedSectors.length > cloudSectors.length) {
+            saveHunterProgress(session.user.id, mergedSectors);
+          }
+        } else if (activeProfile?.userId && isValidUuid(activeProfile.userId)) {
+          // If guest has existing progress in Supabase, load it
+          fetchHunterProfile(activeProfile.userId).then((guestDbProfile) => {
+            if (guestDbProfile && Array.isArray(guestDbProfile.unlocked_sectors)) {
+              const merged = Array.from(
+                new Set([...initialClearances, ...guestDbProfile.unlocked_sectors])
+              ).sort((a, b) => a - b);
+              setProfile((prev) => ({ ...prev, unlockedSectors: merged }));
+              try {
+                localStorage.setItem(CLEARANCES_STORAGE_KEY, JSON.stringify(merged));
+              } catch {}
+            }
+          });
         }
         setLoading(false);
       });
 
       const { data: authListener } = supabase.auth.onAuthStateChange(
-        (_event, session) => {
+        async (_event, session) => {
           if (session?.user) {
             const userMeta = session.user.user_metadata;
             const username = extractUsername(userMeta, session.user.id);
@@ -202,20 +239,32 @@ export function useHunterSession() {
                 ? "google"
                 : undefined;
 
+            const cloudProfile = await fetchHunterProfile(session.user.id);
+            const cloudSectors: number[] = Array.isArray(cloudProfile?.unlocked_sectors)
+              ? cloudProfile.unlocked_sectors
+              : [];
+
+            const mergedSectors = Array.from(
+              new Set([...getStoredClearances(), ...cloudSectors, 1])
+            ).sort((a, b) => a - b);
+
             const authProfile: HunterProfile = {
               userId: session.user.id,
-              username,
-              avatarUrl,
+              username: cloudProfile?.x_username || username,
+              avatarUrl: cloudProfile?.x_avatar_url || avatarUrl,
               isGuest: false,
               isLoggedIn: true,
-              zcashAddress: (userMeta as any)?.zcash_address || "",
+              zcashAddress: cloudProfile?.zcash_address || (userMeta as any)?.zcash_address || "",
               authProvider,
-              unlockedSectors: initialClearances,
+              unlockedSectors: mergedSectors,
             };
+
             setProfile(authProfile);
-            gameEventBus.emit("AVATAR_CHANGED", { avatarUrl });
+            gameEventBus.emit("AVATAR_CHANGED", { avatarUrl: authProfile.avatarUrl });
+
             try {
               localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(authProfile));
+              localStorage.setItem(CLEARANCES_STORAGE_KEY, JSON.stringify(mergedSectors));
             } catch {}
           }
         }
@@ -228,7 +277,6 @@ export function useHunterSession() {
       setLoading(false);
     }
   }, []);
-
 
   const setCustomUsername = useCallback((name: string) => {
     const trimmed = name.trim();
@@ -254,7 +302,7 @@ export function useHunterSession() {
         }
       }
 
-      if (isSupabaseConfigured && supabase && updated.userId) {
+      if (isSupabaseConfigured && supabase && isValidUuid(updated.userId)) {
         supabase
           .from("profiles")
           .upsert(
@@ -263,6 +311,8 @@ export function useHunterSession() {
               x_username: updated.username,
               x_avatar_url: updated.avatarUrl,
               is_guest: updated.isGuest ?? false,
+              unlocked_sectors: updated.unlockedSectors,
+              updated_at: new Date().toISOString(),
             },
             { onConflict: "id" }
           )
@@ -304,7 +354,7 @@ export function useHunterSession() {
         // Notify in-game character of avatar update in real-time
         gameEventBus.emit("AVATAR_CHANGED", { avatarUrl: updated.avatarUrl });
 
-        if (isSupabaseConfigured && supabase && prev.userId) {
+        if (isSupabaseConfigured && supabase && isValidUuid(prev.userId)) {
           supabase
             .from("profiles")
             .upsert(
@@ -314,6 +364,8 @@ export function useHunterSession() {
                 x_avatar_url: nextAvatar,
                 ...(nextZcash ? { zcash_address: nextZcash } : {}),
                 is_guest: prev.isGuest ?? false,
+                unlocked_sectors: prev.unlockedSectors,
+                updated_at: new Date().toISOString(),
               },
               { onConflict: "id" }
             )
@@ -369,29 +421,35 @@ export function useHunterSession() {
     gameEventBus.emit("AVATAR_CHANGED", { avatarUrl: guestAvatar });
   }, [isSupabaseConfigured]);
 
+  const unlockSector = useCallback(
+    (sectorId: number) => {
+      setProfile((prev) => {
+        const current = prev.unlockedSectors || [1];
+        if (current.includes(sectorId)) return prev;
 
-  const unlockSector = useCallback((sectorId: number) => {
+        const nextUnlocked = Array.from(new Set([...current, sectorId])).sort((a, b) => a - b);
+        const updated = {
+          ...prev,
+          unlockedSectors: nextUnlocked,
+        };
 
-    setProfile((prev) => {
-      const current = prev.unlockedSectors || [1];
-      if (current.includes(sectorId)) return prev;
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem(CLEARANCES_STORAGE_KEY, JSON.stringify(nextUnlocked));
+            localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(updated));
+          } catch {}
+        }
 
-      const nextUnlocked = Array.from(new Set([...current, sectorId])).sort((a, b) => a - b);
-      const updated = {
-        ...prev,
-        unlockedSectors: nextUnlocked,
-      };
+        // Persist unlocked clearance to Supabase
+        if (isSupabaseConfigured && isValidUuid(prev.userId)) {
+          saveHunterProgress(prev.userId, nextUnlocked);
+        }
 
-      if (typeof window !== "undefined") {
-        try {
-          localStorage.setItem(CLEARANCES_STORAGE_KEY, JSON.stringify(nextUnlocked));
-          localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(updated));
-        } catch {}
-      }
-
-      return updated;
-    });
-  }, []);
+        return updated;
+      });
+    },
+    [isSupabaseConfigured]
+  );
 
   return {
     profile,
@@ -405,5 +463,3 @@ export function useHunterSession() {
     isSupabaseConfigured,
   };
 }
-
-

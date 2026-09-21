@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin, isSupabaseAdminConfigured, devMockStore } from "@/lib/supabaseAdmin";
+import {
+  supabaseAdmin,
+  isSupabaseAnyConfigured,
+  devMockStore,
+  isValidUuid,
+} from "@/lib/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +17,7 @@ export interface LeaderboardItem {
   total_points: number;
   chapters_cleared: number;
   best_time_ms: number;
+  unlocked_sectors?: number[];
 }
 
 export async function GET(req: NextRequest) {
@@ -20,18 +26,25 @@ export async function GET(req: NextRequest) {
     const targetUserId = searchParams.get("userId");
 
     let rawList: any[] = [];
+    let isLiveSupabase = false;
 
     // 1. Fetch from Supabase View if configured
-    if (isSupabaseAdminConfigured && supabaseAdmin) {
-      const { data, error } = await supabaseAdmin
-        .from("leaderboard")
-        .select("*")
-        .limit(50);
+    if (isSupabaseAnyConfigured && supabaseAdmin) {
+      try {
+        const { data, error } = await supabaseAdmin
+          .from("leaderboard")
+          .select("*")
+          .limit(50);
 
-      if (!error && data) {
-        rawList = data;
-      } else {
-        console.warn("Supabase leaderboard query fallback:", error?.message);
+        if (!error && data) {
+          rawList = data;
+          isLiveSupabase = true;
+        } else {
+          console.warn("Supabase leaderboard query fallback:", error?.message);
+          rawList = devMockStore.getLeaderboard();
+        }
+      } catch (err: any) {
+        console.warn("Supabase client query exception:", err?.message);
         rawList = devMockStore.getLeaderboard();
       }
     } else {
@@ -40,7 +53,7 @@ export async function GET(req: NextRequest) {
 
     // 2. Map items with Rank index (1-based)
     const leaderboard: LeaderboardItem[] = rawList.slice(0, 50).map((row, idx) => ({
-      rank: idx + 1,
+      rank: row.rank ? Number(row.rank) : idx + 1,
       user_id: row.user_id,
       x_username: row.x_username || "Anonymous Hunter",
       x_avatar_url:
@@ -51,6 +64,7 @@ export async function GET(req: NextRequest) {
       total_points: Number(row.total_points || 0),
       chapters_cleared: Number(row.chapters_cleared || 0),
       best_time_ms: Number(row.best_time_ms || 0),
+      unlocked_sectors: Array.isArray(row.unlocked_sectors) ? row.unlocked_sectors : [1],
     }));
 
     // 3. Locate Target User Rank & Stats
@@ -60,13 +74,43 @@ export async function GET(req: NextRequest) {
     if (targetUserId) {
       const foundIdx = leaderboard.findIndex((item) => item.user_id === targetUserId);
       if (foundIdx !== -1) {
-        userRank = foundIdx + 1;
         currentUserEntry = leaderboard[foundIdx];
+        userRank = currentUserEntry.rank;
+      } else if (isLiveSupabase && supabaseAdmin && isValidUuid(targetUserId)) {
+        // Query user's standing outside top 50
+        try {
+          const { data: userStanding } = await supabaseAdmin
+            .from("leaderboard")
+            .select("*")
+            .eq("user_id", targetUserId)
+            .maybeSingle();
+
+          if (userStanding) {
+            userRank = Number(userStanding.rank || 0);
+            currentUserEntry = {
+              rank: userRank,
+              user_id: userStanding.user_id,
+              x_username: userStanding.x_username || "Anonymous Hunter",
+              x_avatar_url:
+                userStanding.x_avatar_url && !userStanding.x_avatar_url.includes("dicebear")
+                  ? userStanding.x_avatar_url
+                  : "/bitfoot-heads/bitfoot-head-01.png",
+              is_guest: Boolean(userStanding.is_guest),
+              total_points: Number(userStanding.total_points || 0),
+              chapters_cleared: Number(userStanding.chapters_cleared || 0),
+              best_time_ms: Number(userStanding.best_time_ms || 0),
+              unlocked_sectors: Array.isArray(userStanding.unlocked_sectors)
+                ? userStanding.unlocked_sectors
+                : [1],
+            };
+          }
+        } catch {}
       }
     }
 
     return NextResponse.json({
       success: true,
+      isLiveSupabase,
       leaderboard,
       userRank,
       currentUserEntry,

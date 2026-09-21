@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ChapterScoreBreakdown } from "@/lib/eventBus";
-import { supabaseAdmin, isSupabaseAdminConfigured, devMockStore } from "@/lib/supabaseAdmin";
+import {
+  supabaseAdmin,
+  isSupabaseAnyConfigured,
+  devMockStore,
+  isValidUuid,
+} from "@/lib/supabaseAdmin";
 import { SECTORS } from "@/game/config/sectors";
 
 export interface ChapterCompleteRequest {
@@ -23,12 +28,20 @@ const ALLOWED_FOOTPRINTS: Record<number, Set<string>> = {
   3: new Set(["ch3_fp_1", "ch3_fp_2", "ch3_fp_3", "ch3_fp_4", "ch3_fp_5", "ch3_fp_6"]),
 };
 
+function generateFallbackUuid(): string {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body: ChapterCompleteRequest = await req.json();
     const {
       chapterId = 1,
-      userId = "anonymous-guest-id",
+      userId: rawUserId,
       username = "Guest_Hunter",
       avatarUrl = "/bitfoot-heads/bitfoot-head-01.png",
       zcashAddress,
@@ -39,6 +52,9 @@ export async function POST(req: NextRequest) {
       foundSecretSilhouette = false,
       gateAnswerIndex,
     } = body;
+
+    // Ensure valid UUID format for PostgreSQL UUID column
+    const validUserId = isValidUuid(rawUserId || "") ? (rawUserId as string) : generateFallbackUuid();
 
     // 1. Basic Validation
     if (!startTime || !endTime || typeof startTime !== "number" || typeof endTime !== "number") {
@@ -104,47 +120,86 @@ export async function POST(req: NextRequest) {
       speedBonus,
     };
 
-    // 8. Database Recording
-    if (isSupabaseAdminConfigured && supabaseAdmin) {
+    // Calculate progression: unlock next sector if legitimate clearance
+    const nextSector = Math.min(3, chapterId + 1);
+    let updatedUnlockedSectors: number[] = [1, nextSector];
+    let userRank: number | null = null;
+    let totalUserPoints: number = totalScore;
+
+    // 8. Database Recording to Supabase
+    if (isSupabaseAnyConfigured && supabaseAdmin) {
       try {
+        // Fetch existing profile to preserve unlocked sectors
+        const { data: existingProfile } = await supabaseAdmin
+          .from("profiles")
+          .select("unlocked_sectors, highest_score")
+          .eq("id", validUserId)
+          .maybeSingle();
+
+        const currentUnlocked: number[] = Array.isArray(existingProfile?.unlocked_sectors)
+          ? existingProfile.unlocked_sectors
+          : [1];
+
+        updatedUnlockedSectors = Array.from(new Set([...currentUnlocked, 1, nextSector])).sort(
+          (a, b) => a - b
+        );
+
+        // Upsert Profile with progress and latest call-sign
         await supabaseAdmin.from("profiles").upsert(
           {
-            id: userId,
+            id: validUserId,
             x_username: username,
             x_avatar_url: avatarUrl,
             is_guest: isGuest,
+            unlocked_sectors: updatedUnlockedSectors,
             ...(zcashAddress ? { zcash_address: zcashAddress } : {}),
+            updated_at: new Date().toISOString(),
           },
           { onConflict: "id" }
         );
 
+        // Insert new clearance score record
         await supabaseAdmin.from("chapter_scores").insert({
-          user_id: userId,
+          user_id: validUserId,
           chapter: chapterId,
           points: totalScore,
           duration_ms: durationMs,
         });
+
+        // Query user's current standing from the leaderboard view
+        const { data: standing } = await supabaseAdmin
+          .from("leaderboard")
+          .select("rank, total_points, chapters_cleared, best_time_ms")
+          .eq("user_id", validUserId)
+          .maybeSingle();
+
+        if (standing) {
+          userRank = standing.rank ? Number(standing.rank) : null;
+          totalUserPoints = Number(standing.total_points || totalScore);
+        }
       } catch (dbErr) {
-        console.error("Supabase DB Insert Error:", dbErr);
+        console.error("Supabase DB Save Exception:", dbErr);
         devMockStore.recordScore({
-          userId,
+          userId: validUserId,
           username,
           avatarUrl,
           isGuest,
           chapter: chapterId,
           points: totalScore,
           durationMs,
+          unlockedSectors: updatedUnlockedSectors,
         });
       }
     } else {
       devMockStore.recordScore({
-        userId,
+        userId: validUserId,
         username,
         avatarUrl,
         isGuest,
         chapter: chapterId,
         points: totalScore,
         durationMs,
+        unlockedSectors: updatedUnlockedSectors,
       });
     }
 
@@ -155,6 +210,10 @@ export async function POST(req: NextRequest) {
       durationMs,
       timeElapsedSeconds,
       breakdown,
+      unlockedSectors: updatedUnlockedSectors,
+      userRank,
+      totalUserPoints,
+      userId: validUserId,
     });
   } catch (error: any) {
     return NextResponse.json(

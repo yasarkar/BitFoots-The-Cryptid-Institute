@@ -298,13 +298,25 @@ export abstract class BaseSectorScene extends Phaser.Scene {
       if (stored) sessionProfile = JSON.parse(stored);
     } catch {}
 
+    const validUserId =
+      sessionProfile?.userId &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        sessionProfile.userId
+      )
+        ? sessionProfile.userId
+        : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+            const r = (Math.random() * 16) | 0;
+            const v = c === "x" ? r : (r & 0x3) | 0x8;
+            return v.toString(16);
+          });
+
     try {
       const res = await fetch("/api/chapter/complete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           chapterId: this.sectorId,
-          userId: sessionProfile?.userId || "guest-" + Date.now(),
+          userId: validUserId,
           username: sessionProfile?.username || "Guest_Hunter",
           avatarUrl: sessionProfile?.avatarUrl,
           zcashAddress: sessionProfile?.zcashAddress,

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { LeaderboardItem } from "@/app/api/leaderboard/route";
+import { subscribeToLeaderboard } from "@/lib/supabaseClient";
 import {
   Trophy,
   X,
@@ -9,7 +10,8 @@ import {
   Crown,
   Medal,
   UserCheck,
-  Compass,
+  Radio,
+  Sparkles,
 } from "lucide-react";
 
 interface LeaderboardModalProps {
@@ -26,8 +28,10 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
   const [leaderboard, setLeaderboard] = useState<LeaderboardItem[]>([]);
   const [userRank, setUserRank] = useState<number | null>(null);
   const [currentUserEntry, setCurrentUserEntry] = useState<LeaderboardItem | null>(null);
+  const [isLiveSupabase, setIsLiveSupabase] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastRefreshed, setLastRefreshed] = useState<string>("");
 
   const fetchLeaderboard = useCallback(async () => {
     setLoading(true);
@@ -43,11 +47,13 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
         setLeaderboard(data.leaderboard || []);
         setUserRank(data.userRank);
         setCurrentUserEntry(data.currentUserEntry);
+        setIsLiveSupabase(Boolean(data.isLiveSupabase));
+        setLastRefreshed(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
       } else {
         setError(data.error || "Failed to load leaderboard registry.");
       }
     } catch {
-      setError("Connection error occurred.");
+      setError("Connection error occurred while contacting leaderboard registry.");
     } finally {
       setLoading(false);
     }
@@ -56,6 +62,13 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       fetchLeaderboard();
+      // Subscribe to live Supabase Postgres changes for real-time scores
+      const unsubscribe = subscribeToLeaderboard(() => {
+        fetchLeaderboard();
+      });
+      return () => {
+        unsubscribe();
+      };
     }
   }, [isOpen, fetchLeaderboard]);
 
@@ -78,9 +91,20 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                 <span className="bitfoots-chip bitfoots-chip--solid text-[10px] py-0.5 px-2">
                   TOP 50
                 </span>
+                {isLiveSupabase ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    SUPABASE LIVE
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono">
+                    <Radio className="w-2.5 h-2.5" />
+                    STANDBY SYNC
+                  </span>
+                )}
               </div>
               <p className="text-[11px] text-[#7d8898] font-mono tracking-wider">
-                THE CRYPTID INSTITUTE // SERIES 303 EXPEDITION REGISTRY
+                THE CRYPTID INSTITUTE // CLOUD EXPEDITION REGISTRY
               </p>
             </div>
           </div>
@@ -89,6 +113,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
             <button
               onClick={fetchLeaderboard}
               disabled={loading}
+              title="Refresh telemetry"
               className="p-2 rounded-lg bg-[#0f1216] hover:bg-[#1a1f26] border border-[#3a475c] text-[#7d8898] hover:text-[#eaba49] transition-all disabled:opacity-50"
             >
               <RotateCw className={`w-4 h-4 ${loading ? "animate-spin text-[#eaba49]" : ""}`} />
@@ -113,14 +138,17 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
               {userRank ? (
                 <>
                   <span className="text-[#f3c85f]">Rank #{userRank}</span>
-                  <span className="text-[#7fc98f]">{currentUserEntry?.total_points} PTS</span>
+                  <span className="text-[#7fc98f]">{currentUserEntry?.total_points || 0} PTS</span>
                   <span className="text-[#7d8898]">
                     {Math.round((currentUserEntry?.best_time_ms || 0) / 1000)}s
+                  </span>
+                  <span className="text-[#38bdf8] text-[11px]">
+                    Sector {currentUserEntry?.chapters_cleared || 0} Cleared
                   </span>
                 </>
               ) : (
                 <span className="text-[#7d8898] font-normal">
-                  No verified survey telemetry recorded yet in Sector 01
+                  No verified survey telemetry recorded yet
                 </span>
               )}
             </div>
@@ -138,11 +166,12 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
           {loading && leaderboard.length === 0 ? (
             <div className="py-16 text-center space-y-3 font-mono">
               <div className="w-8 h-8 border-2 border-[#eaba49] border-t-transparent rounded-full animate-spin mx-auto" />
-              <p className="text-xs text-[#7d8898]">Verifying hunter telemetry records...</p>
+              <p className="text-xs text-[#7d8898]">Verifying hunter telemetry records in Supabase...</p>
             </div>
           ) : leaderboard.length === 0 ? (
-            <div className="py-16 text-center text-xs text-[#7d8898] font-mono">
-              No hunter telemetry recorded in registry yet. Be the first!
+            <div className="py-16 text-center text-xs text-[#7d8898] font-mono space-y-2">
+              <Sparkles className="w-8 h-8 text-[#eaba49]/40 mx-auto" />
+              <p>No hunter telemetry recorded in registry yet. Be the first to clear Sector 01!</p>
             </div>
           ) : (
             <div className="space-y-1.5">
@@ -249,6 +278,9 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-[#3a475c]/60 bg-[#0f1216]/70 flex items-center justify-between text-[11px] text-[#7d8898] font-mono">
+          <div className="text-[#7d8898]">
+            {lastRefreshed ? `Last telemetry sync: ${lastRefreshed}` : "Standby"}
+          </div>
           <button
             onClick={onClose}
             className="bitfoots-btn py-1.5 px-4 rounded-lg text-xs"

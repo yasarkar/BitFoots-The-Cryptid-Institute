@@ -2,6 +2,7 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
 export const isSupabaseAdminConfigured = Boolean(
   supabaseUrl &&
@@ -10,9 +11,17 @@ export const isSupabaseAdminConfigured = Boolean(
     supabaseUrl.startsWith("http")
 );
 
+export const isSupabaseAnyConfigured = Boolean(
+  supabaseUrl &&
+    (serviceRoleKey || anonKey) &&
+    !supabaseUrl.includes("your-project") &&
+    supabaseUrl.startsWith("http")
+);
+
 /**
- * Server-only Supabase Admin Client using SUPABASE_SERVICE_ROLE_KEY.
- * Bypasses RLS to insert validated chapter scores and manage profiles.
+ * Server-only Supabase Client.
+ * Uses SUPABASE_SERVICE_ROLE_KEY if available (to bypass RLS for anti-cheat verified scores),
+ * otherwise falls back to anon key.
  */
 export const supabaseAdmin: SupabaseClient | null = isSupabaseAdminConfigured
   ? createClient(supabaseUrl, serviceRoleKey, {
@@ -21,12 +30,29 @@ export const supabaseAdmin: SupabaseClient | null = isSupabaseAdminConfigured
         persistSession: false,
       },
     })
+  : isSupabaseAnyConfigured
+  ? createClient(supabaseUrl, anonKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    })
   : null;
 
 /**
- * In-Memory Development Store fallback when Supabase is not yet connected
+ * Validates whether a string is a valid UUID
+ */
+export function isValidUuid(str: string): boolean {
+  if (!str || typeof str !== "string") return false;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
+
+/**
+ * In-Memory Development Store fallback when Supabase credentials are not yet set
  */
 export interface MockLeaderboardEntry {
+  rank?: number;
   user_id: string;
   x_username: string;
   x_avatar_url: string;
@@ -34,11 +60,11 @@ export interface MockLeaderboardEntry {
   total_points: number;
   chapters_cleared: number;
   best_time_ms: number;
+  unlocked_sectors?: number[];
 }
 
-// Pre-seeded with a few retro hunters for realistic preview
 const globalDevStore: {
-  profiles: Map<string, { x_username: string; x_avatar_url: string; is_guest: boolean }>;
+  profiles: Map<string, { x_username: string; x_avatar_url: string; is_guest: boolean; unlocked_sectors: number[] }>;
   scores: Array<{
     user_id: string;
     chapter: number;
@@ -49,47 +75,50 @@ const globalDevStore: {
 } = {
   profiles: new Map([
     [
-      "mock-hunter-1",
+      "a0000000-0000-4000-8000-000000000001",
       {
         x_username: "satoshi_footprint",
         x_avatar_url: "/bitfoot-heads/bitfoot-head-01.png",
         is_guest: false,
+        unlocked_sectors: [1, 2, 3],
       },
     ],
     [
-      "mock-hunter-2",
+      "a0000000-0000-4000-8000-000000000002",
       {
         x_username: "pixel_stalker",
         x_avatar_url: "/bitfoot-heads/bitfoot-head-02.png",
         is_guest: false,
+        unlocked_sectors: [1, 2],
       },
     ],
     [
-      "mock-hunter-3",
+      "a0000000-0000-4000-8000-000000000003",
       {
         x_username: "Guest_9921",
         x_avatar_url: "/bitfoot-heads/bitfoot-head-03.png",
         is_guest: true,
+        unlocked_sectors: [1],
       },
     ],
   ]),
   scores: [
     {
-      user_id: "mock-hunter-1",
+      user_id: "a0000000-0000-4000-8000-000000000001",
       chapter: 1,
       points: 310,
       duration_ms: 22400,
       created_at: new Date().toISOString(),
     },
     {
-      user_id: "mock-hunter-2",
+      user_id: "a0000000-0000-4000-8000-000000000002",
       chapter: 1,
       points: 290,
       duration_ms: 26100,
       created_at: new Date().toISOString(),
     },
     {
-      user_id: "mock-hunter-3",
+      user_id: "a0000000-0000-4000-8000-000000000003",
       chapter: 1,
       points: 240,
       duration_ms: 31000,
@@ -107,11 +136,18 @@ export const devMockStore = {
     chapter: number;
     points: number;
     durationMs: number;
+    unlockedSectors?: number[];
   }) => {
+    const existing = globalDevStore.profiles.get(data.userId);
+    const updatedUnlocked = Array.from(
+      new Set([...(existing?.unlocked_sectors || [1]), ...(data.unlockedSectors || [1])])
+    ).sort((a, b) => a - b);
+
     globalDevStore.profiles.set(data.userId, {
       x_username: data.username,
       x_avatar_url: data.avatarUrl,
       is_guest: data.isGuest,
+      unlocked_sectors: updatedUnlocked,
     });
 
     globalDevStore.scores.push({
@@ -159,6 +195,7 @@ export const devMockStore = {
         x_username: "Anonymous Hunter",
         x_avatar_url: "/bitfoot-heads/bitfoot-head-01.png",
         is_guest: true,
+        unlocked_sectors: [1],
       };
 
       results.push({
@@ -169,6 +206,7 @@ export const devMockStore = {
         total_points: agg.totalPoints,
         chapters_cleared: agg.chaptersCleared,
         best_time_ms: agg.bestTimeMs,
+        unlocked_sectors: profile.unlocked_sectors,
       });
     });
 
