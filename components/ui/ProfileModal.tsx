@@ -92,7 +92,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     }
     return {
       status: "valid",
-      message: "Valid Zcash Shielded Address (Orchard / Unified Pool)",
+      message: "Valid Zcash Shielded Address",
     };
   };
 
