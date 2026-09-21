@@ -10,13 +10,12 @@ import {
   Crown,
   Medal,
   UserCheck,
-  Radio,
-  Sparkles,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
   Crosshair,
+  File,
 } from "lucide-react";
 
 interface LeaderboardModalProps {
@@ -206,7 +205,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
             </div>
           ) : leaderboard.length === 0 ? (
             <div className="py-16 text-center text-xs text-[#7d8898] font-mono space-y-2">
-              <Sparkles className="w-8 h-8 text-[#eaba49]/40 mx-auto" />
+              <File className="w-8 h-8 text-[#eaba49]/40 mx-auto" />
               <p>No hunter telemetry recorded in registry yet. Be the first to clear Sector 01!</p>
             </div>
           ) : (
