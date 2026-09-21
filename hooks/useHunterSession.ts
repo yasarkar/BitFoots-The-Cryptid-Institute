@@ -163,7 +163,11 @@ export function useHunterSession() {
           const avatarUrl = extractAvatar(userMeta, username);
           const rawProvider = session.user.app_metadata?.provider;
           const authProvider =
-            rawProvider === "twitter" ? "twitter" : rawProvider === "google" ? "google" : undefined;
+            rawProvider === "twitter" || rawProvider === "x"
+              ? "twitter"
+              : rawProvider === "google"
+              ? "google"
+              : undefined;
 
           const authProfile: HunterProfile = {
             userId: session.user.id,
@@ -192,7 +196,11 @@ export function useHunterSession() {
             const avatarUrl = extractAvatar(userMeta, username);
             const rawProvider = session.user.app_metadata?.provider;
             const authProvider =
-              rawProvider === "twitter" ? "twitter" : rawProvider === "google" ? "google" : undefined;
+              rawProvider === "twitter" || rawProvider === "x"
+                ? "twitter"
+                : rawProvider === "google"
+                ? "google"
+                : undefined;
 
             const authProfile: HunterProfile = {
               userId: session.user.id,

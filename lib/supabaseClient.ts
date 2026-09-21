@@ -20,6 +20,7 @@ export const supabase: SupabaseClient | null = isSupabaseConfigured
 
 /**
  * Initiates X (Twitter) OAuth Login flow
+ * Modern Supabase uses "x" (OAuth 2.0). Falls back to "twitter" (OAuth 1.0a) if needed.
  */
 export async function signInWithTwitter() {
   if (!supabase) {
@@ -30,12 +31,25 @@ export async function signInWithTwitter() {
   const redirectOrigin =
     typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
 
-  return await supabase.auth.signInWithOAuth({
-    provider: "twitter",
+  // Attempt modern OAuth 2.0 'x' provider first
+  const res = await supabase.auth.signInWithOAuth({
+    provider: "x",
     options: {
       redirectTo: `${redirectOrigin}/auth/callback`,
     },
   });
+
+  // If Supabase project has legacy Twitter (OAuth 1.0a) enabled instead of 'x'
+  if (res.error && res.error.message?.toLowerCase().includes("not enabled")) {
+    return await supabase.auth.signInWithOAuth({
+      provider: "twitter",
+      options: {
+        redirectTo: `${redirectOrigin}/auth/callback`,
+      },
+    });
+  }
+
+  return res;
 }
 
 /**
