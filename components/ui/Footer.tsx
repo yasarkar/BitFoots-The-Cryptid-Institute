@@ -8,6 +8,7 @@ import {
   Lock,
   Zap,
   ShieldCheck,
+  BookOpen,
 } from "lucide-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
 
@@ -203,10 +204,20 @@ export const Footer: React.FC<FooterProps> = ({
               An autonomous cryptographic field experiment exploring shielded digital cryptids. Inscribed on Bitcoin Ordinals and concealed within Zcash's zero-knowledge pool.
             </p>
 
-            <div className="flex items-center space-x-2 pt-1">
+            <div className="flex items-center flex-wrap gap-2 pt-1">
               <span className="bitfoots-chip bitfoots-chip--solid text-[10px] py-0.5 px-2.5">
                 SERIES 303
               </span>
+              {onOpenAbout && (
+                <button
+                  type="button"
+                  onClick={onOpenAbout}
+                  className="px-2 py-0.5 rounded text-[10px] font-mono text-[#eaba49] hover:text-[#ffddcc] bg-[#eaba49]/10 hover:bg-[#eaba49]/20 border border-[#eaba49]/40 transition-colors flex items-center gap-1"
+                >
+                  <BookOpen className="w-3 h-3" />
+                  <span>FIELD DOSSIER</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -406,6 +417,18 @@ export const Footer: React.FC<FooterProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-3 sm:gap-2">
+            {onOpenAbout && (
+              <>
+                <button
+                  type="button"
+                  onClick={onOpenAbout}
+                  className="text-[#ffddcc] hover:text-[#eaba49] transition-colors underline underline-offset-2"
+                >
+                  Field Dossier (Archive)
+                </button>
+                <span className="text-[#3a475c]">•</span>
+              </>
+            )}
             <span className="text-[#3a475c] hidden md:inline">•</span>
             <span className="text-[#ffddcc]/60 hidden lg:inline">ZCASH SHIELDED POOL + BITCOIN ORDINALS</span>
             <span className="text-[#3a475c]">•</span>
