@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React from "react";
 import {
   Compass,
   Radio,
@@ -9,8 +9,12 @@ import {
   Zap,
   ShieldCheck,
   BookOpen,
+  RotateCw,
+  Activity,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
-import { supabase, isSupabaseConfigured } from "@/lib/supabaseClient";
+import { useFieldTelemetry } from "@/hooks/useFieldTelemetry";
 
 interface FooterProps {
   onOpenLeaderboard?: () => void;
@@ -19,8 +23,9 @@ interface FooterProps {
   onSwitchChapter: (chapterId: 1 | 2 | 3) => void;
   activeChapter: 1 | 2 | 3;
   unlockedSectors?: number[];
+  currentUsername?: string;
+  currentUserId?: string;
 }
-
 
 export const Footer: React.FC<FooterProps> = ({
   onOpenLeaderboard,
@@ -29,131 +34,33 @@ export const Footer: React.FC<FooterProps> = ({
   onSwitchChapter,
   activeChapter,
   unlockedSectors = [1],
+  currentUsername,
+  currentUserId,
 }) => {
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Real-time Concurrent Hunters State
-  const [onlineHunters, setOnlineHunters] = useState<number>(38);
-  // Real-time BTC Block Height State
-  const [btcBlock, setBtcBlock] = useState<string>("892,104");
-  // Apex Leaderboard Record State
-  const [apexRecord, setApexRecord] = useState<{
-    name: string;
-    time: string;
-    points: number;
-  }>({
-    name: "@SHADOW_AGENT",
-    time: "00:48s",
-    points: 340,
+  // Live Field Telemetry Engine
+  const {
+    onlineHunters,
+    btcBlock,
+    zkStatus,
+    apexRecord,
+    currentIndex,
+    totalSightings,
+    latestDispatch,
+    isLive,
+    isSyncing,
+    hasNewApex,
+    setIsPaused,
+    nextSighting,
+    prevSighting,
+    refreshTelemetry,
+  } = useFieldTelemetry({
+    currentUsername,
+    currentUserId,
   });
-  // Latest Field Anomaly Dispatch Feed
-  const [latestDispatch, setLatestDispatch] = useState<string>(
-    "@hunter_09 spotted silhouette in S01 (1m ago)"
-  );
-
-  // 1. Supabase Presence Realtime / Organic Drift Tracker
-  useEffect(() => {
-    let channel: any = null;
-    const baseCount = 36;
-
-    if (isSupabaseConfigured && supabase) {
-      try {
-        const guestId = `hunter_${Math.random().toString(36).substring(2, 7)}`;
-        channel = supabase.channel("online-hunters", {
-          config: { presence: { key: guestId } },
-        });
-
-        channel
-          .on("presence", { event: "sync" }, () => {
-            const state = channel.presenceState();
-            const realCount = Object.keys(state).length;
-            setOnlineHunters(baseCount + Math.max(1, realCount));
-          })
-          .subscribe(async (status: string) => {
-            if (status === "SUBSCRIBED") {
-              await channel.track({ online_at: new Date().toISOString() });
-            }
-          });
-      } catch (err) {
-        console.warn("Telemetry presence init:", err);
-      }
-    } else {
-      // Realistic organic reconnaissance drift between 35 and 46
-      const interval = setInterval(() => {
-        setOnlineHunters((prev) => {
-          const delta = Math.floor(Math.random() * 3) - 1; // -1, 0, or +1
-          return Math.min(46, Math.max(34, prev + delta));
-        });
-      }, 7000);
-      return () => clearInterval(interval);
-    }
-
-    return () => {
-      if (channel && supabase) {
-        supabase.removeChannel(channel);
-      }
-    };
-  }, []);
-
-  // 2. Fetch Live Bitcoin Block Height
-  useEffect(() => {
-    let isMounted = true;
-    fetch("https://mempool.space/api/blocks/tip/height")
-      .then((res) => {
-        if (res.ok) return res.text();
-        throw new Error("Mempool fetch failed");
-      })
-      .then((heightText) => {
-        const num = parseInt(heightText.trim(), 10);
-        if (!isNaN(num) && isMounted) {
-          setBtcBlock(num.toLocaleString());
-        }
-      })
-      .catch(() => {
-        // Fallback default for offline/dev environments
-        if (isMounted) setBtcBlock("892,104");
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  // 3. Fetch Apex Record & Latest Sighting from Leaderboard API
-  useEffect(() => {
-    let isMounted = true;
-    fetch("/api/leaderboard")
-      .then((res) => res.json())
-      .then((data) => {
-        if (!isMounted) return;
-        if (data.success && data.leaderboard && data.leaderboard.length > 0) {
-          const top = data.leaderboard[0];
-          const minutes = Math.floor(top.best_time_ms / 60000);
-          const seconds = Math.floor((top.best_time_ms % 60000) / 1000);
-          const formattedTime = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}s`;
-
-          setApexRecord({
-            name: top.x_username.startsWith("@") ? top.x_username : `@${top.x_username}`,
-            time: formattedTime,
-            points: top.total_points,
-          });
-
-          // Pick dynamic sighting dispatch
-          const secondOrTop = data.leaderboard[Math.min(1, data.leaderboard.length - 1)];
-          const sightingName = secondOrTop.x_username.startsWith("@")
-            ? secondOrTop.x_username
-            : `@${secondOrTop.x_username}`;
-          setLatestDispatch(`${sightingName} spotted silhouette (2m ago)`);
-        }
-      })
-      .catch(() => {});
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   return (
     <footer className="w-full bg-[#0d1014]/95 backdrop-blur-md border-t border-[#3a475c]/70 relative z-20 overflow-hidden text-[#aab6c9] mt-6">
@@ -342,57 +249,135 @@ export const Footer: React.FC<FooterProps> = ({
                 <Radio className="w-3.5 h-3.5 text-[#7fc98f] animate-pulse" />
                 <span>LIVE FIELD TELEMETRY</span>
               </h4>
+
+              {/* Live Signal Status Badge & Refresh Button */}
+              <div className="flex items-center space-x-2">
+                <div
+                  className="flex items-center space-x-1.5 px-2 py-0.5 rounded-full bg-[#121921] border border-[#3a475c]/60 text-[10px] font-mono select-none"
+                  title={isLive ? "Connected to Supabase Realtime Telemetry Grid" : "Autonomous Field Telemetry Drift"}
+                >
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#7fc98f] opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-[#7fc98f]" />
+                  </span>
+                  <span className="text-[#7fc98f] font-semibold tracking-wider">
+                    {isLive ? "LIVE SYNC" : "ACTIVE"}
+                  </span>
+                </div>
+
+                <button
+                  onClick={refreshTelemetry}
+                  disabled={isSyncing}
+                  className="p-1 rounded-lg bg-[#121921] border border-[#3a475c]/60 text-[#7d8898] hover:text-[#eaba49] hover:border-[#eaba49]/40 transition-colors disabled:opacity-50"
+                  title="Resync Telemetry Packets"
+                >
+                  <RotateCw className={`w-3 h-3 ${isSyncing ? "animate-spin text-[#eaba49]" : ""}`} />
+                </button>
+              </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-[#0a0d11] border border-[#3a475c]/70 space-y-3 font-mono text-[11px]">
+            <div className="p-4 rounded-xl bg-[#0a0d11] border border-[#3a475c]/70 space-y-3 font-mono text-[11px] relative overflow-hidden shadow-lg shadow-black/40">
+              {/* Subtle Scanning Line Animation */}
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#7fc98f]/[0.02] to-transparent pointer-events-none opacity-50" />
+
               {/* 1. Live Active Hunters */}
               <div className="flex items-center justify-between border-b border-[#3a475c]/40 pb-2.5">
                 <span className="text-[#7d8898] flex items-center gap-1.5">
+                  <Activity className="w-3 h-3 text-[#7fc98f]" />
                   ACTIVE IN FIELD
                 </span>
-                <span className="text-[#7fc98f] font-bold tracking-wider">
+                <span className="text-[#7fc98f] font-bold tracking-wider flex items-center gap-1.5">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#7fc98f] animate-pulse" />
                   {onlineHunters} HUNTERS
                 </span>
               </div>
 
-              {/* 2. Latest Sighting Log (Slide-Right Ticker) */}
-              <div className="flex items-center justify-between border-b border-[#3a475c]/40 pb-2.5 overflow-hidden">
-                <span className="text-[#7d8898] shrink-0 whitespace-nowrap">
-                  LATEST SIGHTING
-                </span>
-                <div className="relative flex-1 ml-3 h-4 overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]">
+              {/* 2. Latest Sighting Log (Interactive Rotating Feed & Ticker) */}
+              <div
+                className="flex items-center justify-between border-b border-[#3a475c]/40 pb-2.5 overflow-hidden group/ticker"
+                onMouseEnter={() => setIsPaused(true)}
+                onMouseLeave={() => setIsPaused(false)}
+              >
+                <div className="flex items-center gap-1 shrink-0">
+                  <span className="text-[#7d8898] whitespace-nowrap">
+                    LATEST SIGHTING
+                  </span>
+                  {totalSightings > 1 && (
+                    <span className="text-[9px] text-[#7d8898]/70 font-mono">
+                      [{currentIndex + 1}/{totalSightings}]
+                    </span>
+                  )}
+                </div>
+
+                <div className="relative flex-1 ml-3 h-4 overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]">
                   <div
-                    className="animate-telemetry-slide-right text-[#ffddcc] font-medium hover:[animation-play-state:paused] cursor-default"
+                    key={currentIndex}
+                    className="animate-telemetry-slide-right text-[#ffddcc] font-medium group-hover/ticker:[animation-play-state:paused] cursor-default transition-all"
                     title={latestDispatch}
                   >
                     {latestDispatch}
                   </div>
                 </div>
+
+                {/* Sighting navigation controls on hover */}
+                {totalSightings > 1 && (
+                  <div className="flex items-center space-x-0.5 ml-1.5 opacity-0 group-hover/ticker:opacity-100 transition-opacity">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        prevSighting();
+                      }}
+                      className="p-0.5 text-[#7d8898] hover:text-[#eaba49] transition-colors"
+                      title="Previous sighting"
+                    >
+                      <ChevronLeft className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        nextSighting();
+                      }}
+                      className="p-0.5 text-[#7d8898] hover:text-[#eaba49] transition-colors"
+                      title="Next sighting"
+                    >
+                      <ChevronRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* 3. Apex Record (Clickable to open Leaderboard) */}
               <div
                 onClick={onOpenLeaderboard}
-                className="flex items-center justify-between border-b border-[#3a475c]/40 pb-2 cursor-pointer group hover:bg-[#161c24]/80 p-1 -mx-1 rounded transition-colors"
+                className={`flex items-center justify-between border-b border-[#3a475c]/40 pb-2 cursor-pointer group hover:bg-[#161c24]/80 p-1 -mx-1 rounded transition-all ${
+                  hasNewApex ? "ring-1 ring-[#eaba49] bg-[#eaba49]/10" : ""
+                }`}
                 title="View Full Expedition Leaderboard"
               >
-                <span className="text-[#7d8898] group-hover:text-[#ffddcc] transition-colors">
+                <span className="text-[#7d8898] group-hover:text-[#ffddcc] transition-colors flex items-center gap-1.5">
+                  <span className="text-[#eaba49]">▲</span>
                   APEX RECON RECORD
                 </span>
-                <span className="text-[#eaba49] font-bold group-hover:text-[#f3c85f] transition-colors flex items-center gap-1">
+                <span className="text-[#eaba49] font-bold group-hover:text-[#f3c85f] transition-colors flex items-center gap-1.5">
                   <span>{apexRecord.time}</span>
                   <span className="text-[9px] text-[#7d8898] font-normal">({apexRecord.name})</span>
+                  <span className="px-1 py-0.2 rounded bg-[#eaba49]/15 border border-[#eaba49]/30 text-[9px] text-[#eaba49]">
+                    {apexRecord.points}P
+                  </span>
                 </span>
               </div>
 
               {/* 4. Live Bitcoin Block Height & ZK Pool */}
               <div className="flex items-center justify-between">
-                <span className="text-[#7d8898] flex items-center gap-1">
+                <span className="text-[#7d8898] flex items-center gap-1.5">
                   NETWORK LEDGER
                 </span>
-                <span className="text-[#aab6c9] font-semibold text-right">
-                  <span className="text-[#ffddcc]">BTC #{btcBlock}</span>{" "}
-                  <span className="text-[#7fc98f] text-[10px]">• ZK OK</span>
+                <span className="text-[#aab6c9] font-semibold text-right flex items-center gap-1.5">
+                  <span className="text-[#ffddcc]">BTC #{btcBlock}</span>
+                  <span className="text-[#7fc98f] text-[10px] flex items-center gap-1">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#7fc98f]" />
+                    {zkStatus}
+                  </span>
                 </span>
               </div>
             </div>

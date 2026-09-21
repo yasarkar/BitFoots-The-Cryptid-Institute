@@ -1215,6 +1215,8 @@ export default function GamePage() {
       onSwitchChapter={handleSwitchChapter}
       activeChapter={activeChapter}
       unlockedSectors={profile.unlockedSectors}
+      currentUsername={profile.username}
+      currentUserId={profile.userId}
     />
 
     {/* 5. Modals & Overlays */}

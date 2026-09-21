@@ -219,4 +219,26 @@ export const devMockStore = {
       return a.best_time_ms - b.best_time_ms;
     });
   },
+
+  getRecentScores: (limit = 10) => {
+    const list = [...globalDevStore.scores].reverse().slice(0, limit);
+    return list.map((s, idx) => {
+      const profile = globalDevStore.profiles.get(s.user_id) || {
+        x_username: "Anonymous Hunter",
+        x_avatar_url: "/bitfoot-heads/bitfoot-head-01.png",
+      };
+      return {
+        id: `mock_score_${idx}_${s.user_id.slice(0, 8)}`,
+        user_id: s.user_id,
+        chapter: s.chapter,
+        points: s.points,
+        duration_ms: s.duration_ms,
+        created_at: s.created_at,
+        profiles: {
+          x_username: profile.x_username,
+          x_avatar_url: profile.x_avatar_url,
+        },
+      };
+    });
+  },
 };
