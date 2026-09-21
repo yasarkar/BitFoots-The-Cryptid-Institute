@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { LeaderboardItem } from "@/app/api/leaderboard/route";
 import { subscribeToLeaderboard } from "@/lib/supabaseClient";
 import {
@@ -12,6 +12,11 @@ import {
   UserCheck,
   Radio,
   Sparkles,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Crosshair,
 } from "lucide-react";
 
 interface LeaderboardModalProps {
@@ -19,6 +24,8 @@ interface LeaderboardModalProps {
   onClose: () => void;
   currentUserId?: string;
 }
+
+const ITEMS_PER_PAGE = 10;
 
 export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
   isOpen,
@@ -32,6 +39,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState<number>(1);
 
   const fetchLeaderboard = useCallback(async () => {
     setLoading(true);
@@ -48,7 +56,9 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
         setUserRank(data.userRank);
         setCurrentUserEntry(data.currentUserEntry);
         setIsLiveSupabase(Boolean(data.isLiveSupabase));
-        setLastRefreshed(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
+        setLastRefreshed(
+          new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+        );
       } else {
         setError(data.error || "Failed to load leaderboard registry.");
       }
@@ -72,11 +82,41 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
     }
   }, [isOpen, fetchLeaderboard]);
 
+  // Total pages and pagination bounds
+  const totalPages = Math.max(1, Math.ceil(leaderboard.length / ITEMS_PER_PAGE));
+
+  // Ensure current page remains within bounds when leaderboard list updates
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
+
+  // Paginated records (10 per page)
+  const paginatedItems = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return leaderboard.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [leaderboard, currentPage]);
+
+  // Find page of current user for quick-jump
+  const userPage = useMemo(() => {
+    if (!currentUserId || !userRank) return null;
+    const userIndex = leaderboard.findIndex((item) => item.user_id === currentUserId);
+    if (userIndex === -1) return null;
+    return Math.floor(userIndex / ITEMS_PER_PAGE) + 1;
+  }, [currentUserId, userRank, leaderboard]);
+
+  const handleJumpToMyRank = () => {
+    if (userPage) {
+      setCurrentPage(userPage);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="w-full max-w-2xl bitfoots-glass-card rounded-2xl flex flex-col max-h-[85vh] overflow-hidden text-[#aab6c9] font-sans">
+      <div className="w-full max-w-2xl bitfoots-glass-card rounded-2xl flex flex-col max-h-[88vh] overflow-hidden text-[#aab6c9] font-sans">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-[#3a475c]/60 bg-[#0f1216]/70">
           <div className="flex items-center space-x-3.5">
@@ -86,22 +126,8 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base sm:text-lg font-serif font-medium text-[#ffddcc] tracking-wide">
-                  Hunter Registry // Field Clearance
+                  Hunter Registry
                 </h2>
-                <span className="bitfoots-chip bitfoots-chip--solid text-[10px] py-0.5 px-2">
-                  TOP 50
-                </span>
-                {isLiveSupabase ? (
-                  <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    SUPABASE LIVE
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono">
-                    <Radio className="w-2.5 h-2.5" />
-                    STANDBY SYNC
-                  </span>
-                )}
               </div>
               <p className="text-[11px] text-[#7d8898] font-mono tracking-wider">
                 THE CRYPTID INSTITUTE // CLOUD EXPEDITION REGISTRY
@@ -145,6 +171,16 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                   <span className="text-[#38bdf8] text-[11px]">
                     Sector {currentUserEntry?.chapters_cleared || 0} Cleared
                   </span>
+                  {userPage && userPage !== currentPage && (
+                    <button
+                      onClick={handleJumpToMyRank}
+                      className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-[#eaba49]/15 hover:bg-[#eaba49]/25 text-[#eaba49] border border-[#eaba49]/40 transition-all font-mono"
+                      title="Jump to my page"
+                    >
+                      <Crosshair className="w-3 h-3" />
+                      Page {userPage}
+                    </button>
+                  )}
                 </>
               ) : (
                 <span className="text-[#7d8898] font-normal">
@@ -175,7 +211,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
             </div>
           ) : (
             <div className="space-y-1.5">
-              {leaderboard.map((item) => {
+              {paginatedItems.map((item) => {
                 const isCurrentPlayer = currentUserId && item.user_id === currentUserId;
 
                 // Rank Badges
@@ -276,10 +312,76 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
           )}
         </div>
 
+        {/* Pagination Bar */}
+        {leaderboard.length > 0 && (
+          <div className="px-6 py-2.5 bg-[#0b0e12]/80 border-t border-[#3a475c]/40 flex items-center justify-between text-xs font-mono">
+            <div className="text-[#7d8898] text-[11px]">
+              Showing <span className="text-[#ffddcc]">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span>–
+              <span className="text-[#ffddcc]">
+                {Math.min(currentPage * ITEMS_PER_PAGE, leaderboard.length)}
+              </span>{" "}
+              of <span className="text-[#ffddcc]">{leaderboard.length}</span> Hunters
+            </div>
+
+            <div className="flex items-center space-x-1.5">
+              <button
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+                title="First Page"
+                className="p-1.5 rounded bg-[#14171c] hover:bg-[#1a1f26] border border-[#3a475c] text-[#7d8898] hover:text-[#eaba49] disabled:opacity-30 disabled:hover:text-[#7d8898] transition-all"
+              >
+                <ChevronsLeft className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                title="Previous Page"
+                className="p-1.5 rounded bg-[#14171c] hover:bg-[#1a1f26] border border-[#3a475c] text-[#7d8898] hover:text-[#eaba49] disabled:opacity-30 disabled:hover:text-[#7d8898] transition-all"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+
+              {/* Page Number Buttons */}
+              <div className="flex items-center space-x-1 px-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`w-7 h-7 rounded text-[11px] font-bold transition-all ${
+                      pageNum === currentPage
+                        ? "bg-[#eaba49] text-black border border-[#eaba49] shadow-sm shadow-[#eaba49]/30"
+                        : "bg-[#14171c] hover:bg-[#1f242d] border border-[#3a475c] text-[#aab6c9] hover:text-white"
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                title="Next Page"
+                className="p-1.5 rounded bg-[#14171c] hover:bg-[#1a1f26] border border-[#3a475c] text-[#7d8898] hover:text-[#eaba49] disabled:opacity-30 disabled:hover:text-[#7d8898] transition-all"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+                title="Last Page"
+                className="p-1.5 rounded bg-[#14171c] hover:bg-[#1a1f26] border border-[#3a475c] text-[#7d8898] hover:text-[#eaba49] disabled:opacity-30 disabled:hover:text-[#7d8898] transition-all"
+              >
+                <ChevronsRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-[#3a475c]/60 bg-[#0f1216]/70 flex items-center justify-between text-[11px] text-[#7d8898] font-mono">
+        <div className="px-6 py-3.5 border-t border-[#3a475c]/60 bg-[#0f1216]/70 flex items-center justify-between text-[11px] text-[#7d8898] font-mono">
           <div className="text-[#7d8898]">
-            {lastRefreshed ? `Last telemetry sync: ${lastRefreshed}` : "Standby"}
+            {lastRefreshed ? `Last updated: ${lastRefreshed}` : "Standby"}
           </div>
           <button
             onClick={onClose}
