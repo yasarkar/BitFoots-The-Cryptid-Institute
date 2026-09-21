@@ -114,12 +114,16 @@ export class BootScene extends Phaser.Scene {
     // 6. Keyboard Controls (WASD + Arrow Keys)
     if (this.input.keyboard) {
       this.cursors = this.input.keyboard.createCursorKeys();
-      this.wasdKeys = this.input.keyboard.addKeys({
-        W: Phaser.Input.Keyboard.KeyCodes.W,
-        A: Phaser.Input.Keyboard.KeyCodes.A,
-        S: Phaser.Input.Keyboard.KeyCodes.S,
-        D: Phaser.Input.Keyboard.KeyCodes.D,
-      }) as typeof this.wasdKeys;
+      this.wasdKeys = this.input.keyboard.addKeys(
+        {
+          W: Phaser.Input.Keyboard.KeyCodes.W,
+          A: Phaser.Input.Keyboard.KeyCodes.A,
+          S: Phaser.Input.Keyboard.KeyCodes.S,
+          D: Phaser.Input.Keyboard.KeyCodes.D,
+        },
+        false
+      ) as typeof this.wasdKeys;
+      this.input.keyboard.clearCaptures();
     }
 
     // 7. Subscribe to React Event Bus

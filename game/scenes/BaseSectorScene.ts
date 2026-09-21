@@ -77,13 +77,18 @@ export abstract class BaseSectorScene extends Phaser.Scene {
   protected setupBaseControls() {
     if (this.input.keyboard) {
       this.cursors = this.input.keyboard.createCursorKeys();
-      this.wasdKeys = this.input.keyboard.addKeys({
-        W: Phaser.Input.Keyboard.KeyCodes.W,
-        A: Phaser.Input.Keyboard.KeyCodes.A,
-        S: Phaser.Input.Keyboard.KeyCodes.S,
-        D: Phaser.Input.Keyboard.KeyCodes.D,
-      }) as typeof this.wasdKeys;
-      this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+      this.wasdKeys = this.input.keyboard.addKeys(
+        {
+          W: Phaser.Input.Keyboard.KeyCodes.W,
+          A: Phaser.Input.Keyboard.KeyCodes.A,
+          S: Phaser.Input.Keyboard.KeyCodes.S,
+          D: Phaser.Input.Keyboard.KeyCodes.D,
+        },
+        false
+      ) as typeof this.wasdKeys;
+      this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE, false);
+      // Clear key captures so HTML input fields (like the Hunter call-sign modal) receive key events
+      this.input.keyboard.clearCaptures();
     }
   }
 

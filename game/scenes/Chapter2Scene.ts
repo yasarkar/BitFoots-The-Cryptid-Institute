@@ -134,6 +134,15 @@ export class Chapter2Scene extends BaseSectorScene {
       return;
     }
 
+    if (
+      typeof document !== "undefined" &&
+      (document.activeElement instanceof HTMLInputElement ||
+        document.activeElement instanceof HTMLTextAreaElement)
+    ) {
+      this.player.setVelocity(0, 0);
+      return;
+    }
+
     const speed = 135;
     let vx = 0;
     let vy = 0;
