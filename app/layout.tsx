@@ -31,9 +31,7 @@ export const metadata: Metadata = {
     description: "Specimens are never captured, only observed. Preserved on Bitcoin, shielded by Zcash.",
   },
   icons: {
-    icon: [
-      { url: "/icon.svg", type: "image/svg+xml" },
-    ],
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
     shortcut: "/icon.svg",
     apple: "/icon.svg",
   },
@@ -47,17 +45,12 @@ export const viewport: Viewport = {
   themeColor: "#05080e",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="antialiased bg-[#14171c] text-[#aab6c9] font-sans selection:bg-[#eaba49] selection:text-[#14171c]">
+      <body className="bg-[#14171c] font-sans text-[#aab6c9] antialiased selection:bg-[#eaba49] selection:text-[#14171c]">
         {children}
       </body>
     </html>
   );
 }
-

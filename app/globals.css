@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Chakra+Petch:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Press+Start+2P&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Chakra+Petch:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Press+Start+2P&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -21,18 +21,23 @@
   --bad: #e07a6b;
   --unk: #d8c27a;
 
-  --font-serif: 'IBM Plex Serif', Georgia, serif;
-  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  --font-arcade: 'Press Start 2P', monospace;
-  --font-tech: 'Chakra Petch', sans-serif;
+  --font-serif: "IBM Plex Serif", Georgia, serif;
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-arcade: "Press Start 2P", monospace;
+  --font-tech: "Chakra Petch", sans-serif;
 }
 
 body {
   color: var(--text);
   background-color: var(--bg);
-  background-image: 
-    radial-gradient(ellipse 60% 55% at 50% 20%, rgba(185, 200, 235, 0.12), rgba(185, 200, 235, 0.03) 45%, transparent 70%),
+  background-image:
+    radial-gradient(
+      ellipse 60% 55% at 50% 20%,
+      rgba(185, 200, 235, 0.12),
+      rgba(185, 200, 235, 0.03) 45%,
+      transparent 70%
+    ),
     radial-gradient(ellipse 80% 85% at 50% 40%, transparent 45%, rgba(5, 6, 8, 0.65) 100%),
     linear-gradient(180deg, #14171c 0%, #0c0e12 100%);
   min-height: 100vh;
@@ -63,10 +68,17 @@ canvas {
   content: " ";
   display: block;
   position: absolute;
-  top: 0; left: 0; bottom: 0; right: 0;
-  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background:
+    linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+    linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
   z-index: 25;
-  background-size: 100% 3px, 6px 100%;
+  background-size:
+    100% 3px,
+    6px 100%;
   pointer-events: none;
 }
 
@@ -74,7 +86,10 @@ canvas {
   content: " ";
   display: block;
   position: absolute;
-  top: 0; left: 0; bottom: 0; right: 0;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
   box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.7);
   pointer-events: none;
   z-index: 26;
@@ -82,15 +97,21 @@ canvas {
 
 /* Custom Neon & Glow Helpers */
 .neon-border-emerald {
-  box-shadow: 0 0 16px rgba(0, 255, 157, 0.4), inset 0 0 10px rgba(0, 255, 157, 0.15);
+  box-shadow:
+    0 0 16px rgba(0, 255, 157, 0.4),
+    inset 0 0 10px rgba(0, 255, 157, 0.15);
 }
 
 .neon-border-amber {
-  box-shadow: 0 0 16px rgba(245, 158, 11, 0.4), inset 0 0 10px rgba(245, 158, 11, 0.15);
+  box-shadow:
+    0 0 16px rgba(245, 158, 11, 0.4),
+    inset 0 0 10px rgba(245, 158, 11, 0.15);
 }
 
 .neon-border-cyan {
-  box-shadow: 0 0 16px rgba(0, 240, 255, 0.4), inset 0 0 10px rgba(0, 240, 255, 0.15);
+  box-shadow:
+    0 0 16px rgba(0, 240, 255, 0.4),
+    inset 0 0 10px rgba(0, 240, 255, 0.15);
 }
 
 .neon-text-emerald {
@@ -203,7 +224,12 @@ canvas {
   position: absolute;
   inset: 0;
   z-index: 5;
-  background: radial-gradient(ellipse 60% 55% at 50% 22%, rgba(185, 200, 235, 0.2), rgba(185, 200, 235, 0.06) 45%, transparent 70%);
+  background: radial-gradient(
+    ellipse 60% 55% at 50% 22%,
+    rgba(185, 200, 235, 0.2),
+    rgba(185, 200, 235, 0.06) 45%,
+    transparent 70%
+  );
   pointer-events: none;
 }
 
@@ -227,8 +253,9 @@ canvas {
   width: 200%;
   height: 70vh;
   opacity: 0.55;
-  background: radial-gradient(ellipse 22% 38% at 25% 72%, rgba(170, 182, 201, 0.22), transparent 70%),
-              radial-gradient(ellipse 30% 30% at 72% 58%, rgba(170, 182, 201, 0.15), transparent 70%);
+  background:
+    radial-gradient(ellipse 22% 38% at 25% 72%, rgba(170, 182, 201, 0.22), transparent 70%),
+    radial-gradient(ellipse 30% 30% at 72% 58%, rgba(170, 182, 201, 0.15), transparent 70%);
   background-size: 50% 100%;
   animation: fw-drift 80s linear infinite;
   pointer-events: none;
@@ -262,8 +289,9 @@ canvas {
   gap: calc(var(--s, 8px) * 0.1333);
   opacity: 0;
   filter: drop-shadow(0 0 calc(var(--s, 8px) * 0.6) rgba(234, 186, 73, 0.45));
-  animation: fw-lurk var(--lt, 14s) ease-in-out var(--ld, 0s) infinite,
-             fw-blink var(--bt, 6s) var(--bd, 0s) infinite;
+  animation:
+    fw-lurk var(--lt, 14s) ease-in-out var(--ld, 0s) infinite,
+    fw-blink var(--bt, 6s) var(--bd, 0s) infinite;
 }
 
 .bitfoots-eye,
@@ -298,7 +326,8 @@ canvas {
 .bitfoots-card-mark {
   height: 38px;
   margin: 0 auto 24px;
-  background: url("data:image/svg+xml,%3Csvg preserveAspectRatio='none' width='345' height='33' viewBox='0 0 345 33' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M189 16H345V15H189V16Z' fill='%23eaba49' fill-opacity='0.4'/%3E%3Cpath d='M157 16V15H0V16H157Z' fill='%23eaba49' fill-opacity='0.4'/%3E%3Cpath d='M164 21.28H175.45V32.8H164V21.28Z' fill='%23EABA49'/%3E%3Cpath d='M164 4.91H165.63V6.55H164V4.91Z' fill='%23EABA49'/%3E%3Cpath d='M167.27 3.27H170.54V6.55H167.27V3.27Z' fill='%23EABA49'/%3E%3Cpath d='M172.18 1.63H175.45V6.55H172.18V1.63Z' fill='%23EABA49'/%3E%3Cpath d='M177.09 0H182V6.55H177.09V0Z' fill='%23EABA49'/%3E%3Cpath d='M164 8.18H182V21.28H164V8.18Z' fill='%23EABA49'/%3E%3C/svg%3E") no-repeat center / 345px 33px;
+  background: url("data:image/svg+xml,%3Csvg preserveAspectRatio='none' width='345' height='33' viewBox='0 0 345 33' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M189 16H345V15H189V16Z' fill='%23eaba49' fill-opacity='0.4'/%3E%3Cpath d='M157 16V15H0V16H157Z' fill='%23eaba49' fill-opacity='0.4'/%3E%3Cpath d='M164 21.28H175.45V32.8H164V21.28Z' fill='%23EABA49'/%3E%3Cpath d='M164 4.91H165.63V6.55H164V4.91Z' fill='%23EABA49'/%3E%3Cpath d='M167.27 3.27H170.54V6.55H167.27V3.27Z' fill='%23EABA49'/%3E%3Cpath d='M172.18 1.63H175.45V6.55H172.18V1.63Z' fill='%23EABA49'/%3E%3Cpath d='M177.09 0H182V6.55H177.09V0Z' fill='%23EABA49'/%3E%3Cpath d='M164 8.18H182V21.28H164V8.18Z' fill='%23EABA49'/%3E%3C/svg%3E")
+    no-repeat center / 345px 33px;
 }
 
 /* BitFoots Chips */
@@ -372,28 +401,51 @@ canvas {
   border: 1px solid rgba(234, 186, 73, 0.85);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  box-shadow: 0 30px 120px rgba(0, 0, 0, 0.75), 0 -16px 80px rgba(185, 200, 235, 0.08);
+  box-shadow:
+    0 30px 120px rgba(0, 0, 0, 0.75),
+    0 -16px 80px rgba(185, 200, 235, 0.08);
 }
 
 /* Animation Keyframes */
 @keyframes fw-sway {
-  from { transform: skewX(calc(var(--z, 1) * -0.22deg)); }
-  to   { transform: skewX(calc(var(--z, 1) * 0.22deg)); }
+  from {
+    transform: skewX(calc(var(--z, 1) * -0.22deg));
+  }
+  to {
+    transform: skewX(calc(var(--z, 1) * 0.22deg));
+  }
 }
 
 @keyframes fw-drift {
-  from { transform: translateX(0%); }
-  to   { transform: translateX(-50%); }
+  from {
+    transform: translateX(0%);
+  }
+  to {
+    transform: translateX(-50%);
+  }
 }
 
 @keyframes fw-lurk {
-  0%, 70%, 100% { opacity: 0; }
-  12%, 58%      { opacity: 1; }
+  0%,
+  70%,
+  100% {
+    opacity: 0;
+  }
+  12%,
+  58% {
+    opacity: 1;
+  }
 }
 
 @keyframes fw-blink {
-  0%, 93%, 100% { transform: scaleY(1); }
-  95.5%         { transform: scaleY(0.08); }
+  0%,
+  93%,
+  100% {
+    transform: scaleY(1);
+  }
+  95.5% {
+    transform: scaleY(0.08);
+  }
 }
 
 @keyframes telemetry-slide-right {
@@ -411,5 +463,3 @@ canvas {
   will-change: transform;
   animation: telemetry-slide-right 12s linear infinite;
 }
-
-
