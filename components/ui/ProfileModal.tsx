@@ -377,26 +377,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 <h3 className="font-mono text-base font-bold text-[#ffddcc] sm:text-lg">
                   {usernameInput || profile.username || "Anonymous Hunter"}
                 </h3>
-                {/* Active Avatar Source Indicator */}
-                {isCustomAvatarInput || (avatarUrlInput && avatarUrlInput.includes("bitfoot-head")) ? (
-                  <span className="flex items-center gap-1 rounded-md border border-[#eaba49]/50 bg-[#eaba49]/10 px-1.5 py-0.5 font-mono text-[9px] text-[#eaba49]">
-                    <Sparkles className="h-2.5 w-2.5" />
-                    <span>Custom Avatar</span>
-                  </span>
-                ) : profile.xAvatarUrl &&
-                  (avatarUrlInput === profile.xAvatarUrl || avatarUrlInput.includes("twimg")) ? (
-                  <span className="flex items-center gap-1 rounded-md border border-[#7fc98f]/40 bg-[#7fc98f]/10 px-1.5 py-0.5 font-mono text-[9px] text-[#7fc98f]">
-                    <Check className="h-2.5 w-2.5" />
-                    <span>X Avatar</span>
-                  </span>
-                ) : profile.googleAvatarUrl &&
-                  (avatarUrlInput === profile.googleAvatarUrl ||
-                    avatarUrlInput.includes("googleusercontent")) ? (
-                  <span className="flex items-center gap-1 rounded-md border border-[#3a475c] bg-white/5 px-1.5 py-0.5 font-mono text-[9px] text-[#ffddcc]">
-                    <Check className="h-2.5 w-2.5" />
-                    <span>Google Avatar</span>
-                  </span>
-                ) : null}
               </div>
 
               {/* Avatar Generator Button & Action Buttons */}
@@ -470,9 +450,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               <div className="flex items-center justify-between border-b border-[#3a475c]/60 pb-1.5">
                 <span className="flex items-center gap-1.5 font-mono text-[11px] font-semibold text-[#eaba49]">
                   <Palette className="h-3.5 w-3.5" />
-                  <span>BitFoot Operative Heads (18 Authentic Avatars)</span>
+                  <span>BitFoot Heads (18 Authentic Avatars)</span>
                 </span>
-                <span className="font-mono text-[10px] text-[#7d8898]">Click to select & equip</span>
+                <span className="font-mono text-[10px] text-[#7d8898]">Click to Select</span>
               </div>
               <div className="grid grid-cols-6 gap-2 sm:grid-cols-9">
                 {BITFOOT_HEADS.map((head, idx) => {
