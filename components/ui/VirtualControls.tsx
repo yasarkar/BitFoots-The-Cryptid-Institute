@@ -60,25 +60,25 @@ export const VirtualControls: React.FC<VirtualControlsProps> = ({ className = ""
   };
 
   return (
-    <div className={`flex flex-col items-center select-none ${className}`}>
+    <div className={`flex select-none flex-col items-center ${className}`}>
       {/* Toggle button */}
-      <div className="flex items-center justify-between w-full max-w-[280px] mb-1 px-1">
-        <span className="text-[10px] font-arcade text-bitfoot-accent/70 tracking-widest flex items-center gap-1">
-          <Gamepad2 className="w-3 h-3 text-bitfoot-accent" />
+      <div className="mb-1 flex w-full max-w-[280px] items-center justify-between px-1">
+        <span className="text-bitfoot-accent/70 flex items-center gap-1 font-arcade text-[10px] tracking-widest">
+          <Gamepad2 className="text-bitfoot-accent h-3 w-3" />
           TOUCH D-PAD
         </span>
         <button
           onClick={() => setIsVisible(!isVisible)}
-          className="text-[10px] font-mono text-gray-400 hover:text-white flex items-center gap-1 bg-bitfoot-card/80 px-2 py-0.5 rounded border border-bitfoot-border"
+          className="bg-bitfoot-card/80 border-bitfoot-border flex items-center gap-1 rounded border px-2 py-0.5 font-mono text-[10px] text-gray-400 hover:text-white"
         >
           {isVisible ? (
             <>
-              <EyeOff className="w-2.5 h-2.5" />
+              <EyeOff className="h-2.5 w-2.5" />
               <span>Hide</span>
             </>
           ) : (
             <>
-              <Eye className="w-2.5 h-2.5" />
+              <Eye className="h-2.5 w-2.5" />
               <span>Show</span>
             </>
           )}
@@ -86,10 +86,10 @@ export const VirtualControls: React.FC<VirtualControlsProps> = ({ className = ""
       </div>
 
       {isVisible && (
-        <div className="relative w-44 h-44 bg-bitfoot-dark/80 border border-bitfoot-borderBright/60 rounded-2xl p-2 backdrop-blur-md shadow-2xl flex items-center justify-center">
+        <div className="border-bitfoot-borderBright/60 relative flex h-44 w-44 items-center justify-center rounded-2xl border bg-bitfoot-dark/80 p-2 shadow-2xl backdrop-blur-md">
           {/* Subtle Grid crosshair */}
-          <div className="absolute inset-x-4 h-[1px] bg-bitfoot-border/40 pointer-events-none" />
-          <div className="absolute inset-y-4 w-[1px] bg-bitfoot-border/40 pointer-events-none" />
+          <div className="bg-bitfoot-border/40 pointer-events-none absolute inset-x-4 h-[1px]" />
+          <div className="bg-bitfoot-border/40 pointer-events-none absolute inset-y-4 w-[1px]" />
 
           {/* D-Pad Buttons */}
           {/* UP */}
@@ -99,10 +99,10 @@ export const VirtualControls: React.FC<VirtualControlsProps> = ({ className = ""
             onMouseDown={handleTouchStart("W")}
             onMouseUp={handleTouchEnd("W")}
             onMouseLeave={handleTouchEnd("W")}
-            className="absolute top-2 w-12 h-12 rounded-xl bg-bitfoot-surface/90 hover:bg-bitfoot-moss/30 active:bg-bitfoot-moss/60 border border-bitfoot-border hover:border-bitfoot-accent active:scale-95 transition-transform flex items-center justify-center text-bitfoot-accent shadow-md group"
+            className="bg-bitfoot-surface/90 hover:bg-bitfoot-moss/30 active:bg-bitfoot-moss/60 border-bitfoot-border hover:border-bitfoot-accent text-bitfoot-accent group absolute top-2 flex h-12 w-12 items-center justify-center rounded-xl border shadow-md transition-transform active:scale-95"
             aria-label="Move Up"
           >
-            <ArrowUp className="w-5 h-5 group-active:-translate-y-0.5 transition-transform" />
+            <ArrowUp className="h-5 w-5 transition-transform group-active:-translate-y-0.5" />
           </button>
 
           {/* DOWN */}
@@ -112,10 +112,10 @@ export const VirtualControls: React.FC<VirtualControlsProps> = ({ className = ""
             onMouseDown={handleTouchStart("S")}
             onMouseUp={handleTouchEnd("S")}
             onMouseLeave={handleTouchEnd("S")}
-            className="absolute bottom-2 w-12 h-12 rounded-xl bg-bitfoot-surface/90 hover:bg-bitfoot-moss/30 active:bg-bitfoot-moss/60 border border-bitfoot-border hover:border-bitfoot-accent active:scale-95 transition-transform flex items-center justify-center text-bitfoot-accent shadow-md group"
+            className="bg-bitfoot-surface/90 hover:bg-bitfoot-moss/30 active:bg-bitfoot-moss/60 border-bitfoot-border hover:border-bitfoot-accent text-bitfoot-accent group absolute bottom-2 flex h-12 w-12 items-center justify-center rounded-xl border shadow-md transition-transform active:scale-95"
             aria-label="Move Down"
           >
-            <ArrowDown className="w-5 h-5 group-active:translate-y-0.5 transition-transform" />
+            <ArrowDown className="h-5 w-5 transition-transform group-active:translate-y-0.5" />
           </button>
 
           {/* LEFT */}
@@ -125,10 +125,10 @@ export const VirtualControls: React.FC<VirtualControlsProps> = ({ className = ""
             onMouseDown={handleTouchStart("A")}
             onMouseUp={handleTouchEnd("A")}
             onMouseLeave={handleTouchEnd("A")}
-            className="absolute left-2 w-12 h-12 rounded-xl bg-bitfoot-surface/90 hover:bg-bitfoot-moss/30 active:bg-bitfoot-moss/60 border border-bitfoot-border hover:border-bitfoot-accent active:scale-95 transition-transform flex items-center justify-center text-bitfoot-accent shadow-md group"
+            className="bg-bitfoot-surface/90 hover:bg-bitfoot-moss/30 active:bg-bitfoot-moss/60 border-bitfoot-border hover:border-bitfoot-accent text-bitfoot-accent group absolute left-2 flex h-12 w-12 items-center justify-center rounded-xl border shadow-md transition-transform active:scale-95"
             aria-label="Move Left"
           >
-            <ArrowLeft className="w-5 h-5 group-active:-translate-x-0.5 transition-transform" />
+            <ArrowLeft className="h-5 w-5 transition-transform group-active:-translate-x-0.5" />
           </button>
 
           {/* RIGHT */}
@@ -138,14 +138,14 @@ export const VirtualControls: React.FC<VirtualControlsProps> = ({ className = ""
             onMouseDown={handleTouchStart("D")}
             onMouseUp={handleTouchEnd("D")}
             onMouseLeave={handleTouchEnd("D")}
-            className="absolute right-2 w-12 h-12 rounded-xl bg-bitfoot-surface/90 hover:bg-bitfoot-moss/30 active:bg-bitfoot-moss/60 border border-bitfoot-border hover:border-bitfoot-accent active:scale-95 transition-transform flex items-center justify-center text-bitfoot-accent shadow-md group"
+            className="bg-bitfoot-surface/90 hover:bg-bitfoot-moss/30 active:bg-bitfoot-moss/60 border-bitfoot-border hover:border-bitfoot-accent text-bitfoot-accent group absolute right-2 flex h-12 w-12 items-center justify-center rounded-xl border shadow-md transition-transform active:scale-95"
             aria-label="Move Right"
           >
-            <ArrowRight className="w-5 h-5 group-active:translate-x-0.5 transition-transform" />
+            <ArrowRight className="h-5 w-5 transition-transform group-active:translate-x-0.5" />
           </button>
 
           {/* Center Hub */}
-          <div className="w-8 h-8 rounded-full bg-bitfoot-dark border border-bitfoot-accent/40 flex items-center justify-center text-[9px] font-arcade text-bitfoot-accent/60 pointer-events-none shadow-inner">
+          <div className="border-bitfoot-accent/40 text-bitfoot-accent/60 pointer-events-none flex h-8 w-8 items-center justify-center rounded-full border bg-bitfoot-dark font-arcade text-[9px] shadow-inner">
             90°
           </div>
         </div>

@@ -1,16 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import {
-  Shield,
-  Footprints,
-  Gamepad2,
-  Sparkles,
-  ArrowRight,
-  Shuffle,
-  X as CloseIcon,
-  AlertCircle,
-} from "lucide-react";
+import { Gamepad2, ArrowRight, Shuffle, X as CloseIcon, AlertCircle } from "lucide-react";
 
 interface EntryGateModalProps {
   isOpen: boolean;
@@ -136,20 +127,20 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({
   return (
     <div
       id="entry-gate-overlay"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-300 overflow-y-auto"
+      className="animate-in fade-in fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/85 p-3 backdrop-blur-md duration-300 sm:p-6"
     >
       <div
         id="entry-gate-modal"
-        className="w-full max-w-lg bitfoots-glass-card rounded-2xl p-6 sm:p-9 relative text-[#aab6c9] overflow-hidden my-auto"
+        className="bitfoots-glass-card relative my-auto w-full max-w-lg overflow-hidden rounded-2xl p-6 text-[#aab6c9] sm:p-9"
       >
         {/* Optional Close Button */}
         {canDismiss && onClose && (
           <button
             id="entry-modal-close-btn"
             onClick={onClose}
-            className="absolute top-4 right-4 p-2 rounded-lg bg-[#0f1216] hover:bg-[#1a1f26] text-[#7d8898] hover:text-[#eaba49] border border-[#3a475c] transition-colors z-20"
+            className="absolute right-4 top-4 z-20 rounded-lg border border-[#3a475c] bg-[#0f1216] p-2 text-[#7d8898] transition-colors hover:bg-[#1a1f26] hover:text-[#eaba49]"
           >
-            <CloseIcon className="w-4 h-4" />
+            <CloseIcon className="h-4 w-4" />
           </button>
         )}
 
@@ -157,8 +148,8 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({
         <div className="bitfoots-card-mark" aria-hidden="true" />
 
         {/* Header & Badges */}
-        <div className="text-center flex flex-col items-center space-y-2.5 mb-6">
-          <p className="text-[12px] font-mono font-semibold tracking-[0.24em] text-[#eaba49] uppercase">
+        <div className="mb-6 flex flex-col items-center space-y-2.5 text-center">
+          <p className="font-mono text-[12px] font-semibold uppercase tracking-[0.24em] text-[#eaba49]">
             THE CRYPTID INSTITUTE // SERIES 303
           </p>
 
@@ -166,32 +157,30 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({
             Status: <strong>READY TO HUNT</strong>
           </span>
 
-          <h2 className="text-2xl sm:text-3xl font-serif text-[#ffddcc] font-medium tracking-tight">
+          <h2 className="font-serif text-2xl font-medium tracking-tight text-[#ffddcc] sm:text-3xl">
             Good luck, hunter.
           </h2>
 
-          <p className="text-sm text-[#c9ccd2] max-w-sm mx-auto leading-relaxed">
-            Choose your hunter call-sign to track missing Bitfoot footprints across the dark forest or connect with your archive identity.
+          <p className="mx-auto max-w-sm text-sm leading-relaxed text-[#c9ccd2]">
+            Choose your hunter call-sign to track missing Bitfoot footprints across the dark forest or connect
+            with your archive identity.
           </p>
         </div>
 
         {/* Form 1: Enter with Hunter Call-Sign */}
-        <form onSubmit={handleFormSubmit} className="space-y-4 mb-5">
+        <form onSubmit={handleFormSubmit} className="mb-5 space-y-4">
           <div className="space-y-1.5 text-left">
-            <div className="flex items-center justify-between text-[11px] font-mono tracking-wider">
-              <label
-                htmlFor="player-username-input"
-                className="text-[#eaba49] font-semibold uppercase"
-              >
+            <div className="flex items-center justify-between font-mono text-[11px] tracking-wider">
+              <label htmlFor="player-username-input" className="font-semibold uppercase text-[#eaba49]">
                 HUNTER CALL-SIGN
               </label>
               <button
                 type="button"
                 id="randomize-callsign-btn"
                 onClick={handleRandomize}
-                className="text-[#7d8898] hover:text-[#f3c85f] flex items-center gap-1 transition-colors font-mono"
+                className="flex items-center gap-1 font-mono text-[#7d8898] transition-colors hover:text-[#f3c85f]"
               >
-                <Shuffle className="w-3 h-3" />
+                <Shuffle className="h-3 w-3" />
                 <span>randomize</span>
               </button>
             </div>
@@ -208,7 +197,7 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({
                 maxLength={24}
                 autoFocus
                 placeholder="Enter call-sign (e.g. Hunter_902)"
-                className="w-full px-4 py-3 rounded-lg bg-[#0f1216] border border-[#3a475c] focus:border-[#eaba49] focus:ring-1 focus:ring-[#eaba49]/50 outline-none text-[#ffddcc] placeholder-[#7d8898] font-mono text-sm tracking-wide transition-all shadow-inner"
+                className="w-full rounded-lg border border-[#3a475c] bg-[#0f1216] px-4 py-3 font-mono text-sm tracking-wide text-[#ffddcc] placeholder-[#7d8898] shadow-inner outline-none transition-all focus:border-[#eaba49] focus:ring-1 focus:ring-[#eaba49]/50"
               />
             </div>
           </div>
@@ -217,35 +206,35 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({
             type="submit"
             id="start-expedition-btn"
             disabled={submitting || !usernameInput.trim()}
-            className="w-full bitfoots-btn bitfoots-btn--solid py-3.5 rounded-lg text-xs sm:text-sm tracking-[0.18em] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bitfoots-btn bitfoots-btn--solid w-full rounded-lg py-3.5 text-xs tracking-[0.18em] disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm"
           >
-            <Gamepad2 className="w-4 h-4" />
+            <Gamepad2 className="h-4 w-4" />
             <span>Enter Field</span>
-            <ArrowRight className="w-4 h-4" />
+            <ArrowRight className="h-4 w-4" />
           </button>
         </form>
 
         {/* Divider */}
-        <div className="relative flex items-center justify-center my-4">
+        <div className="relative my-4 flex items-center justify-center">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-[#3a475c]/60" />
           </div>
-          <span className="relative px-3 bg-[#11151c] text-[10px] font-mono text-[#7d8898] uppercase tracking-widest">
+          <span className="relative bg-[#11151c] px-3 font-mono text-[10px] uppercase tracking-widest text-[#7d8898]">
             OR CONNECT WITH ARCHIVE IDENTITY
           </span>
         </div>
 
         {/* Form 2: Google & X (Twitter) Sign-in */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           {/* Google Button */}
           <button
             type="button"
             id="google-login-btn"
             onClick={handleGoogleClick}
             disabled={submitting}
-            className="bitfoots-btn py-3 rounded-lg text-xs disabled:opacity-50"
+            className="bitfoots-btn rounded-lg py-3 text-xs disabled:opacity-50"
           >
-            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+            <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24">
               <path
                 fill="#4285F4"
                 d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
@@ -272,9 +261,9 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({
             id="x-login-btn"
             onClick={handleXClick}
             disabled={submitting}
-            className="bitfoots-btn py-3 rounded-lg text-xs disabled:opacity-50"
+            className="bitfoots-btn rounded-lg py-3 text-xs disabled:opacity-50"
           >
-            <svg className="w-4 h-4 fill-current shrink-0 text-[#eaba49]" viewBox="0 0 24 24">
+            <svg className="h-4 w-4 shrink-0 fill-current text-[#eaba49]" viewBox="0 0 24 24">
               <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
             </svg>
             <span>Sign in with X</span>
@@ -283,8 +272,8 @@ export const EntryGateModal: React.FC<EntryGateModalProps> = ({
 
         {/* Auth Error or Informational Alert */}
         {authError && (
-          <div className="mt-4 p-3 rounded-lg bg-[#e07a6b]/15 border border-[#e07a6b]/50 text-[#ffddcc] text-xs flex items-start space-x-2 animate-in fade-in duration-200">
-            <AlertCircle className="w-4 h-4 text-[#e07a6b] shrink-0 mt-0.5" />
+          <div className="animate-in fade-in mt-4 flex items-start space-x-2 rounded-lg border border-[#e07a6b]/50 bg-[#e07a6b]/15 p-3 text-xs text-[#ffddcc] duration-200">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#e07a6b]" />
             <span className="leading-snug">{authError}</span>
           </div>
         )}

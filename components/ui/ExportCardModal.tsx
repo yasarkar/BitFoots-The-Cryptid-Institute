@@ -1,16 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {
-  Download,
-  Share2,
-  X,
-  Sparkles,
-  Check,
-  Copy,
-  ExternalLink,
-  Shield,
-  Clock,
-  Trophy,
-} from "lucide-react";
+import { Download, Share2, X, Sparkles, Check, Copy, Shield, Clock, Trophy } from "lucide-react";
 
 export interface ExportCardModalProps {
   isOpen: boolean;
@@ -42,12 +31,7 @@ export const ExportCardModal: React.FC<ExportCardModalProps> = ({
 
   // Compute Badge Name
   const finalBadge =
-    badge ||
-    (chapter === 3
-      ? "Apex Grand Hunter"
-      : chapter === 2
-      ? "Grid Navigator"
-      : "Forest Walker");
+    badge || (chapter === 3 ? "Apex Grand Hunter" : chapter === 2 ? "Grid Navigator" : "Forest Walker");
 
   // Construct OG Card URL
   const getCardUrl = () => {
@@ -73,6 +57,7 @@ export const ExportCardModal: React.FC<ExportCardModalProps> = ({
     }
 
     let isMounted = true;
+    let createdUrl: string | null = null;
     setLoadingPreview(true);
     const url = getCardUrl();
 
@@ -81,8 +66,8 @@ export const ExportCardModal: React.FC<ExportCardModalProps> = ({
       .then((svgText) => {
         if (!isMounted) return;
         const blob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
-        const objectUrl = URL.createObjectURL(blob);
-        setSvgDataUrl(objectUrl);
+        createdUrl = URL.createObjectURL(blob);
+        setSvgDataUrl(createdUrl);
         setLoadingPreview(false);
       })
       .catch((err) => {
@@ -92,8 +77,12 @@ export const ExportCardModal: React.FC<ExportCardModalProps> = ({
 
     return () => {
       isMounted = false;
-      if (svgDataUrl) URL.revokeObjectURL(svgDataUrl);
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
     };
+    // Intentionally omitted deps (`getCardUrl`, `svgDataUrl`): the preview must be
+    // fetched exactly once per card parameter set; `svgDataUrl` is only read in the
+    // cleanup to revoke the previous object URL. TODO(UX-4): extract to hook.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, username, avatarUrl, score, timeElapsedSeconds, chapter, badge]);
 
   if (!isOpen) return null;
@@ -171,9 +160,7 @@ export const ExportCardModal: React.FC<ExportCardModalProps> = ({
     try {
       const blob = await renderCardToPngBlob();
       if (navigator.clipboard && window.ClipboardItem) {
-        await navigator.clipboard.write([
-          new window.ClipboardItem({ "image/png": blob }),
-        ]);
+        await navigator.clipboard.write([new window.ClipboardItem({ "image/png": blob })]);
         setCopiedImage(true);
         setTimeout(() => setCopiedImage(false), 2500);
       }
@@ -185,15 +172,8 @@ export const ExportCardModal: React.FC<ExportCardModalProps> = ({
   // Twitter / X Share URL
   const getTwitterShareUrl = () => {
     const cardUrl = getCardUrl();
-    const cleanTime =
-      typeof timeElapsedSeconds === "number"
-        ? `${timeElapsedSeconds}s`
-        : timeElapsedSeconds;
-    const userTag = username
-      ? username.startsWith("@")
-        ? username
-        : `@${username}`
-      : "@Guest_Hunter";
+    const cleanTime = typeof timeElapsedSeconds === "number" ? `${timeElapsedSeconds}s` : timeElapsedSeconds;
+    const userTag = username ? (username.startsWith("@") ? username : `@${username}`) : "@Guest_Hunter";
 
     const text = `🌲 Here continues Tommy’s (@shelby_tommy0) latest high-stakes expedition across @BITFOOTS_!\n\n🐾 Operative: ${userTag}\n🧭 Sector: 0${chapter} Cleared\n🏆 Clearance Rank: ${finalBadge}\n⚡ Telemetry: ${score} PTS in ${cleanTime}\n\n"Never caught. You don't buy a Bitfoot, you spot him. The only price is the hunt."\n\n🔍 Inspect the verified on-chain dossier:\n${cardUrl}`;
 
@@ -206,46 +186,46 @@ export const ExportCardModal: React.FC<ExportCardModalProps> = ({
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-[120] flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+      className="animate-in fade-in fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-3 backdrop-blur-md duration-200 sm:p-5"
     >
-      <div className="relative w-full max-w-3xl bitfoots-glass-card rounded-2xl p-5 sm:p-7 shadow-2xl overflow-hidden text-[#aab6c9] font-sans border border-[#eaba49]/70 flex flex-col space-y-4 max-h-[94vh] overflow-y-auto animate-in zoom-in-95 duration-200 select-none">
+      <div className="bitfoots-glass-card animate-in zoom-in-95 relative flex max-h-[94vh] w-full max-w-3xl select-none flex-col space-y-4 overflow-hidden overflow-y-auto rounded-2xl border border-[#eaba49]/70 p-5 font-sans text-[#aab6c9] shadow-2xl duration-200 sm:p-7">
         {/* Pixel Corner Ornaments */}
-        <div className="absolute top-2 left-2 w-3 h-3 border-t-2 border-l-2 border-[#eaba49]" />
-        <div className="absolute top-2 right-2 w-3 h-3 border-t-2 border-r-2 border-[#eaba49]" />
-        <div className="absolute bottom-2 left-2 w-3 h-3 border-b-2 border-l-2 border-[#eaba49]" />
-        <div className="absolute bottom-2 right-2 w-3 h-3 border-b-2 border-r-2 border-[#eaba49]" />
+        <div className="absolute left-2 top-2 h-3 w-3 border-l-2 border-t-2 border-[#eaba49]" />
+        <div className="absolute right-2 top-2 h-3 w-3 border-r-2 border-t-2 border-[#eaba49]" />
+        <div className="absolute bottom-2 left-2 h-3 w-3 border-b-2 border-l-2 border-[#eaba49]" />
+        <div className="absolute bottom-2 right-2 h-3 w-3 border-b-2 border-r-2 border-[#eaba49]" />
 
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-[#3a475c]/70 pb-3">
           <div className="flex items-center space-x-2.5">
-            <div className="p-1.5 rounded-lg bg-[#eaba49]/10 border border-[#eaba49]/40 text-[#eaba49]">
-              <Sparkles className="w-5 h-5" />
+            <div className="rounded-lg border border-[#eaba49]/40 bg-[#eaba49]/10 p-1.5 text-[#eaba49]">
+              <Sparkles className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-serif font-bold text-[#ffddcc] tracking-wide">
+              <h2 className="font-serif text-base font-bold tracking-wide text-[#ffddcc] sm:text-lg">
                 Expedition Dossier &amp; Clearance Card
               </h2>
-              <p className="text-[11px] font-mono text-[#7d8898]">
+              <p className="font-mono text-[11px] text-[#7d8898]">
                 Official Zcash Shielded Telemetry • Authentic BitFoots Record
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors cursor-pointer"
+            className="cursor-pointer rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-white/10 hover:text-white"
             aria-label="Close modal"
           >
-            <X className="w-5 h-5" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Hunter Quick Summary Chips */}
-        <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl bg-[#0f1216]/90 border border-[#3a475c]/60 text-xs font-mono">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#3a475c]/60 bg-[#0f1216]/90 p-2.5 font-mono text-xs">
           <div className="flex items-center gap-2.5">
             <img
               src={avatarUrl || "/bitfoot-heads/bitfoot-head-01.png"}
               alt={username}
-              className="w-8 h-8 rounded-lg border border-[#eaba49] bg-black object-cover"
+              className="h-8 w-8 rounded-lg border border-[#eaba49] bg-black object-cover"
               onError={(e) => {
                 (e.target as HTMLImageElement).src = "/bitfoot-heads/bitfoot-head-01.png";
               }}
@@ -253,66 +233,60 @@ export const ExportCardModal: React.FC<ExportCardModalProps> = ({
             <span className="font-bold text-[#ffddcc]">
               {username.startsWith("@") ? username : `@${username}`}
             </span>
-            <span className="text-[10px] text-[#7fc98f] bg-[#7fc98f]/10 px-2 py-0.5 rounded border border-[#7fc98f]/30">
+            <span className="rounded border border-[#7fc98f]/30 bg-[#7fc98f]/10 px-2 py-0.5 text-[10px] text-[#7fc98f]">
               Sector 0{chapter}
             </span>
           </div>
 
           <div className="flex items-center gap-3 text-[11px]">
             <span className="flex items-center gap-1 text-[#f3c85f]">
-              <Trophy className="w-3.5 h-3.5" />
+              <Trophy className="h-3.5 w-3.5" />
               <span>{score} PTS</span>
             </span>
             <span className="flex items-center gap-1 text-[#aab6c9]">
-              <Clock className="w-3.5 h-3.5" />
+              <Clock className="h-3.5 w-3.5" />
               <span>
-                {typeof timeElapsedSeconds === "number"
-                  ? `${timeElapsedSeconds}s`
-                  : timeElapsedSeconds}
+                {typeof timeElapsedSeconds === "number" ? `${timeElapsedSeconds}s` : timeElapsedSeconds}
               </span>
             </span>
           </div>
         </div>
 
         {/* Interactive Live Card Preview */}
-        <div className="relative w-full aspect-[1200/630] rounded-xl overflow-hidden bg-black/70 border-2 border-[#eaba49]/80 shadow-2xl flex items-center justify-center group">
+        <div className="group relative flex aspect-[1200/630] w-full items-center justify-center overflow-hidden rounded-xl border-2 border-[#eaba49]/80 bg-black/70 shadow-2xl">
           {loadingPreview ? (
             <div className="flex flex-col items-center justify-center space-y-2 p-8 text-center">
-              <div className="w-8 h-8 border-2 border-[#eaba49] border-t-transparent rounded-full animate-spin" />
-              <p className="text-xs font-mono text-[#eaba49]">
-                Generating cryptographic export card...
-              </p>
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#eaba49] border-t-transparent" />
+              <p className="font-mono text-xs text-[#eaba49]">Generating cryptographic export card...</p>
             </div>
           ) : svgDataUrl ? (
             <img
               src={svgDataUrl}
               alt="BitFoots Hunter Export Card"
-              className="w-full h-full object-contain select-none"
+              className="h-full w-full select-none object-contain"
             />
           ) : (
-            <p className="text-xs text-red-400 font-mono">
+            <p className="font-mono text-xs text-red-400">
               Failed to load preview. Please try downloading directly.
             </p>
           )}
 
           {/* Watermark Overlay Tag */}
-          <div className="absolute top-2 right-2 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity bg-black/70 border border-[#eaba49]/60 px-2 py-0.5 rounded text-[10px] font-mono text-[#ffddcc]">
+          <div className="pointer-events-none absolute right-2 top-2 rounded border border-[#eaba49]/60 bg-black/70 px-2 py-0.5 font-mono text-[10px] text-[#ffddcc] opacity-0 transition-opacity group-hover:opacity-100">
             1200 x 630 HD
           </div>
         </div>
 
         {/* Action Buttons Toolbar */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+        <div className="grid grid-cols-1 gap-2.5 pt-1 sm:grid-cols-3">
           {/* Primary Action: Download PNG */}
           <button
             onClick={handleDownloadPng}
             disabled={downloading}
-            className="bitfoots-btn bitfoots-btn--solid py-3 px-4 rounded-xl text-xs font-bold flex items-center justify-center space-x-2 shadow-lg shadow-[#eaba49]/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+            className="bitfoots-btn bitfoots-btn--solid flex cursor-pointer items-center justify-center space-x-2 rounded-xl px-4 py-3 text-xs font-bold shadow-lg shadow-[#eaba49]/20 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
           >
-            <Download className="w-4 h-4 text-[#14171c]" />
-            <span className="text-[#14171c]">
-              {downloading ? "Rendering PNG..." : "Download PNG"}
-            </span>
+            <Download className="h-4 w-4 text-[#14171c]" />
+            <span className="text-[#14171c]">{downloading ? "Rendering PNG..." : "Download PNG"}</span>
           </button>
 
           {/* Action 2: Share on X */}
@@ -320,25 +294,25 @@ export const ExportCardModal: React.FC<ExportCardModalProps> = ({
             href={getTwitterShareUrl()}
             target="_blank"
             rel="noopener noreferrer"
-            className="bitfoots-btn py-3 px-4 rounded-xl text-xs font-bold flex items-center justify-center space-x-2 border-[#eaba49] hover:bg-[#eaba49]/15 text-[#ffddcc] transition-all cursor-pointer text-center"
+            className="bitfoots-btn flex cursor-pointer items-center justify-center space-x-2 rounded-xl border-[#eaba49] px-4 py-3 text-center text-xs font-bold text-[#ffddcc] transition-all hover:bg-[#eaba49]/15"
           >
-            <Share2 className="w-4 h-4 text-[#eaba49]" />
+            <Share2 className="h-4 w-4 text-[#eaba49]" />
             <span>Share on X</span>
           </a>
 
           {/* Action 3: Copy Image */}
           <button
             onClick={handleCopyImage}
-            className="bitfoots-btn py-3 px-4 rounded-xl text-xs font-bold flex items-center justify-center space-x-2 border-[#3a475c] hover:border-[#eaba49] text-[#c9ccd2] hover:text-white transition-all cursor-pointer"
+            className="bitfoots-btn flex cursor-pointer items-center justify-center space-x-2 rounded-xl border-[#3a475c] px-4 py-3 text-xs font-bold text-[#c9ccd2] transition-all hover:border-[#eaba49] hover:text-white"
           >
             {copiedImage ? (
               <>
-                <Check className="w-4 h-4 text-[#7fc98f]" />
+                <Check className="h-4 w-4 text-[#7fc98f]" />
                 <span className="text-[#7fc98f]">Copied to Clipboard!</span>
               </>
             ) : (
               <>
-                <Copy className="w-4 h-4 text-[#eaba49]" />
+                <Copy className="h-4 w-4 text-[#eaba49]" />
                 <span>Copy Image</span>
               </>
             )}
@@ -346,9 +320,9 @@ export const ExportCardModal: React.FC<ExportCardModalProps> = ({
         </div>
 
         {/* Footer Guarantee */}
-        <div className="pt-2 border-t border-[#3a475c]/50 flex items-center justify-between text-[10px] font-mono text-[#7d8898]">
+        <div className="flex items-center justify-between border-t border-[#3a475c]/50 pt-2 font-mono text-[10px] text-[#7d8898]">
           <span className="flex items-center gap-1">
-            <Shield className="w-3 h-3 text-[#7fc98f]" />
+            <Shield className="h-3 w-3 text-[#7fc98f]" />
             <span>Zero-Knowledge Proof Verified • Anti-Cheat Compliant</span>
           </span>
           <span className="text-[#eaba49]">@BITFOOTS_</span>

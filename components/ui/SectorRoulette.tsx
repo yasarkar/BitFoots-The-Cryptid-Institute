@@ -1,16 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import {
-  Compass,
-  Lock,
-  Radio,
-  Sparkles,
-  Crosshair,
-  ChevronRight,
-  X,
-  Target,
-} from "lucide-react";
+import { Compass, Lock, Radio, Sparkles, Crosshair, ChevronRight, X, Target } from "lucide-react";
 import { audioManager } from "@/lib/audioManager";
 
 /**
@@ -51,7 +42,8 @@ export const SECTOR_DATA: SectorItem[] = [
     name: "Sector 1",
     subTitle: "Forest Canopy",
     shortSubTitle: "FOREST",
-    description: "Fern-choked basin where the cryptid herd leaves its first organic footprint traces under nocturnal fog.",
+    description:
+      "Fern-choked basin where the cryptid herd leaves its first organic footprint traces under nocturnal fog.",
     clearance: "OPEN",
     isUnlocked: true,
     chapter: 1,
@@ -65,7 +57,8 @@ export const SECTOR_DATA: SectorItem[] = [
     name: "Sector 2",
     subTitle: "90° Lattice Grid",
     shortSubTitle: "90° GRID",
-    description: "Shilo's orthogonal proving ground. Strict 90° vector motion, collapsing floor tiles, and glitch lasers.",
+    description:
+      "Shilo's orthogonal proving ground. Strict 90° vector motion, collapsing floor tiles, and glitch lasers.",
     clearance: "RESTRICTED",
     isUnlocked: false,
     chapter: 2,
@@ -79,7 +72,8 @@ export const SECTOR_DATA: SectorItem[] = [
     name: "Sector 3",
     subTitle: "Shielded ZK // FINAL",
     shortSubTitle: "FINAL ZK",
-    description: "The zero-knowledge privacy abyss and final expedition destination. Use acoustic sonar to illuminate terrain, evade shadow stalkers, and claim victory.",
+    description:
+      "The zero-knowledge privacy abyss and final expedition destination. Use acoustic sonar to illuminate terrain, evade shadow stalkers, and claim victory.",
     clearance: "MYTHIC",
     isUnlocked: false,
     chapter: 3,
@@ -87,7 +81,6 @@ export const SECTOR_DATA: SectorItem[] = [
     traces: "6 ZK Proof Nodes",
   },
 ];
-
 
 /* ---------------------------------------------------------------------------
  * Dial geometry — a half-circle anchored flush to the right screen edge.
@@ -123,12 +116,10 @@ const getPoint = (radius: number, angleDeg: number) => {
 };
 
 /** Center angle of a sector slice (S-01: 120°, S-02: 180°, S-03: 240°) */
-const sectorMidAngle = (sectorId: number) =>
-  DIAL.startAngle + (sectorId - 1) * SLICE_ANGLE + SLICE_ANGLE / 2;
+const sectorMidAngle = (sectorId: number) => DIAL.startAngle + (sectorId - 1) * SLICE_ANGLE + SLICE_ANGLE / 2;
 
 /** Shortest angular delta between current and target angle */
-const shortestDelta = (current: number, target: number) =>
-  ((target - current + 540) % 360) - 180;
+const shortestDelta = (current: number, target: number) => ((target - current + 540) % 360) - 180;
 
 /** Half-circle path used for the main backplate and clipping */
 const HALF_CIRCLE_PATH = `M ${DIAL.cx} ${DIAL.cy - DIAL.rOuter} A ${DIAL.rOuter} ${
@@ -198,13 +189,11 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
   const isExpanded = !isHoverDisabled && (isHovered || isArmMoving);
   const armGlideMs = prefersReducedMotion ? ARM_GLIDE_REDUCED_MS : ARM_GLIDE_MS;
 
-  const currentSector =
-    sectorList.find((s) => s.id === (armTargetId ?? activeChapter)) ?? sectorList[0];
+  const currentSector = sectorList.find((s) => s.id === (armTargetId ?? activeChapter)) ?? sectorList[0];
   const focusedSector =
     hoveredSectorId !== null
-      ? sectorList.find((s) => s.id === hoveredSectorId) ?? currentSector
+      ? (sectorList.find((s) => s.id === hoveredSectorId) ?? currentSector)
       : currentSector;
-
 
   /* ---------------------------------------------------------------- Effects */
 
@@ -302,47 +291,62 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
     setHoveredSectorId(null);
   };
 
-  const handleSectorClick = (sector: SectorItem) => {
-    if (isHoverDisabled || isArmMoving) return;
+  const handleSectorClick = useCallback(
+    (sector: SectorItem) => {
+      if (isHoverDisabled || isArmMoving) return;
 
-    const chapter = sector.chapter;
+      const chapter = sector.chapter;
 
-    // Classified / locked sectors reject access
-    if (!sector.isUnlocked || chapter === undefined) {
-      audioManager.playRouletteDenied();
-      setRejectedSectorId(sector.id);
-      if (joltTimerRef.current) window.clearTimeout(joltTimerRef.current);
-      joltTimerRef.current = window.setTimeout(() => setRejectedSectorId(null), 450);
-      pushNotice(`${sector.shortCode} :: LOCKED — CLEAR SECTOR 0${sector.id - 1} FIRST`, "denied");
-      return;
-    }
+      // Classified / locked sectors reject access
+      if (!sector.isUnlocked || chapter === undefined) {
+        audioManager.playRouletteDenied();
+        setRejectedSectorId(sector.id);
+        if (joltTimerRef.current) window.clearTimeout(joltTimerRef.current);
+        joltTimerRef.current = window.setTimeout(() => setRejectedSectorId(null), 450);
+        pushNotice(`${sector.shortCode} :: LOCKED — CLEAR SECTOR 0${sector.id - 1} FIRST`, "denied");
+        return;
+      }
 
-    // Already dialled in
-    if (chapter === activeChapter) {
+      // Already dialled in
+      if (chapter === activeChapter) {
+        audioManager.playRouletteTick();
+        pushNotice(`${sector.shortCode} :: SECTOR ACTIVE — ${sector.subTitle.toUpperCase()}`, "ok");
+        return;
+      }
+
+      clearArmTimers();
+
+      const targetAngle = sectorMidAngle(sector.id);
+      setArmTargetId(sector.id);
+      setArmRotation((prev) => prev + shortestDelta(prev, targetAngle));
       audioManager.playRouletteTick();
-      pushNotice(`${sector.shortCode} :: SECTOR ACTIVE — ${sector.subTitle.toUpperCase()}`, "ok");
-      return;
-    }
 
-    clearArmTimers();
-
-    const targetAngle = sectorMidAngle(sector.id);
-    setArmTargetId(sector.id);
-    setArmRotation((prev) => prev + shortestDelta(prev, targetAngle));
-    audioManager.playRouletteTick();
-
-    armTimersRef.current.push(
-      window.setTimeout(() => {
-        audioManager.playRouletteLock();
-        setArmTargetId(null);
-        pushNotice(`TRANSMISSION LOCKED :: ${sector.name.toUpperCase()} — ${sector.subTitle.toUpperCase()}`, "ok");
-        onSelectChapter(chapter);
-        if (isMobileOpen) {
-          setTimeout(() => setIsMobileOpen(false), 300);
-        }
-      }, armGlideMs)
-    );
-  };
+      armTimersRef.current.push(
+        window.setTimeout(() => {
+          audioManager.playRouletteLock();
+          setArmTargetId(null);
+          pushNotice(
+            `TRANSMISSION LOCKED :: ${sector.name.toUpperCase()} — ${sector.subTitle.toUpperCase()}`,
+            "ok"
+          );
+          onSelectChapter(chapter);
+          if (isMobileOpen) {
+            setTimeout(() => setIsMobileOpen(false), 300);
+          }
+        }, armGlideMs)
+      );
+    },
+    [
+      isHoverDisabled,
+      isArmMoving,
+      activeChapter,
+      pushNotice,
+      clearArmTimers,
+      onSelectChapter,
+      isMobileOpen,
+      armGlideMs,
+    ]
+  );
 
   // Keyboard shortcut navigation (1 to 5)
   useEffect(() => {
@@ -361,7 +365,6 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleSectorClick, sectorList, isHoverDisabled]);
 
-
   /* ------------------------------------------------ Render Components */
 
   // The Tactical Holographic Dossier HUD card
@@ -370,7 +373,7 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
     const isTargetActive = focusedSector.chapter === activeChapter;
 
     return (
-      <div className="relative w-[240px] sm:w-[260px] rounded-2xl border border-[#eaba49]/40 bg-[#0d1117]/95 p-4 text-[#aab6c9] shadow-[0_12px_45px_rgba(0,0,0,0.95),0_0_20px_rgba(234,186,73,0.12)] backdrop-blur-xl">
+      <div className="relative w-[240px] rounded-2xl border border-[#eaba49]/40 bg-[#0d1117]/95 p-4 text-[#aab6c9] shadow-[0_12px_45px_rgba(0,0,0,0.95),0_0_20px_rgba(234,186,73,0.12)] backdrop-blur-xl sm:w-[260px]">
         {/* Holographic corner tech brackets */}
         <div className="absolute left-2 top-2 h-2.5 w-2.5 border-l border-t border-[#eaba49]" />
         <div className="absolute right-2 top-2 h-2.5 w-2.5 border-r border-t border-[#eaba49]" />
@@ -380,7 +383,7 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
         {/* Header telemetry ribbon */}
         <div className="flex items-center justify-between border-b border-[#3a475c]/60 pb-2.5">
           <span
-            className={`rounded-full border px-2 py-0.5 font-mono text-[8.5px] font-bold tracking-wider flex items-center gap-1 ${
+            className={`flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[8.5px] font-bold tracking-wider ${
               focusedSector.isUnlocked
                 ? isTargetActive
                   ? "border-[#eaba49]/70 bg-[#eaba49]/15 text-[#f3c85f]"
@@ -394,7 +397,7 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
               "UNLOCKED // RECON READY"
             ) : (
               <>
-                <Lock className="w-2.5 h-2.5 text-[#e07a6b]" />
+                <Lock className="h-2.5 w-2.5 text-[#e07a6b]" />
                 <span>LOCKED // {focusedSector.clearance}</span>
               </>
             )}
@@ -450,13 +453,13 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
             <button
               type="button"
               onClick={() => handleSectorClick(focusedSector)}
-              className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#eaba49] bg-gradient-to-r from-[#eaba49] to-[#d49e29] py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-[#0e1014] shadow-[0_0_15px_rgba(234,186,73,0.35)] transition-all hover:brightness-110 active:scale-[0.98] cursor-pointer"
+              className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-[#eaba49] bg-gradient-to-r from-[#eaba49] to-[#d49e29] py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-[#0e1014] shadow-[0_0_15px_rgba(234,186,73,0.35)] transition-all hover:brightness-110 active:scale-[0.98]"
             >
               <span>ENGAGE {focusedSector.name.toUpperCase()}</span>
               <ChevronRight className="h-3.5 w-3.5" />
             </button>
           ) : (
-            <div className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-[#e07a6b]/40 bg-[#e07a6b]/10 py-2 font-mono text-[9.5px] font-bold uppercase tracking-wider text-[#e07a6b] select-none">
+            <div className="flex w-full select-none items-center justify-center gap-1.5 rounded-lg border border-[#e07a6b]/40 bg-[#e07a6b]/10 py-2 font-mono text-[9.5px] font-bold uppercase tracking-wider text-[#e07a6b]">
               <Lock className="h-3 w-3" />
               <span>CLEAR SECTOR 0{focusedSector.id - 1} TO UNLOCK</span>
             </div>
@@ -472,7 +475,7 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
       viewBox={`0 0 ${DIAL.width} ${DIAL.height}`}
       role="group"
       aria-label="Expedition sector radar dial"
-      className="h-full w-full overflow-visible transition-all duration-400 ease-out select-none"
+      className="duration-400 h-full w-full select-none overflow-visible transition-all ease-out"
     >
       <defs>
         {/* Obsidian Titanium Plate Gradient */}
@@ -581,7 +584,7 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
       {/* 3. Sweeping Phosphor Radar Beam */}
       <g clipPath="url(#sr-half-clip-mk4)" pointerEvents="none">
         <g
-          className="animate-radar-sweep motion-reduce:animate-none origin-center"
+          className="origin-center animate-radar-sweep motion-reduce:animate-none"
           style={{
             transformOrigin: `${DIAL.cx}px ${DIAL.cy}px`,
             transformBox: "view-box",
@@ -655,24 +658,24 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
           const wedgeFill = isActive
             ? "url(#sr-slice-active-grad)"
             : isUnlocked
-            ? isHoveredSlice
-              ? "url(#sr-slice-hover-grad)"
-              : "url(#sr-slice-unlocked-grad)"
-            : isHoveredSlice
-            ? "#180f12"
-            : "url(#sr-slice-sealed-grad)";
+              ? isHoveredSlice
+                ? "url(#sr-slice-hover-grad)"
+                : "url(#sr-slice-unlocked-grad)"
+              : isHoveredSlice
+                ? "#180f12"
+                : "url(#sr-slice-sealed-grad)";
 
           const wedgeStroke = isRejected
             ? "#e07a6b"
             : isActive
-            ? "#eaba49"
-            : isUnlocked
-            ? isHoveredSlice
-              ? "#f3c85f"
-              : "#2f4036"
-            : isHoveredSlice
-            ? "#e07a6b"
-            : "#1a222e";
+              ? "#eaba49"
+              : isUnlocked
+                ? isHoveredSlice
+                  ? "#f3c85f"
+                  : "#2f4036"
+                : isHoveredSlice
+                  ? "#e07a6b"
+                  : "#1a222e";
 
           const labelAnchor = getPoint(DIAL.rLabelMid, thetaMid);
           const badgeAnchor = getPoint(DIAL.rOuter - 26, thetaMid);
@@ -738,19 +741,14 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
                     opacity: isExpanded ? 0 : 1,
                     transform: isExpanded ? "scale(0.72) translateY(-2px)" : "scale(1) translateY(0)",
                     transformOrigin: "0 0",
-                    transition: "opacity 320ms cubic-bezier(0.4, 0, 0.2, 1), transform 320ms cubic-bezier(0.4, 0, 0.2, 1)",
+                    transition:
+                      "opacity 320ms cubic-bezier(0.4, 0, 0.2, 1), transform 320ms cubic-bezier(0.4, 0, 0.2, 1)",
                   }}
                 >
                   <text
                     x="0"
                     y="8"
-                    fill={
-                      isActive
-                        ? "#ffddcc"
-                        : isUnlocked
-                        ? "#f1f5f9"
-                        : "#3a475c"
-                    }
+                    fill={isActive ? "#ffddcc" : isUnlocked ? "#f1f5f9" : "#3a475c"}
                     fontSize="26"
                     fontWeight="900"
                     fontFamily="JetBrains Mono, monospace"
@@ -772,20 +770,15 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
                     opacity: isExpanded ? 1 : 0,
                     transform: isExpanded ? "scale(1) translateY(0)" : "scale(0.85) translateY(2px)",
                     transformOrigin: "0 0",
-                    transition: "opacity 320ms cubic-bezier(0.4, 0, 0.2, 1), transform 320ms cubic-bezier(0.4, 0, 0.2, 1)",
+                    transition:
+                      "opacity 320ms cubic-bezier(0.4, 0, 0.2, 1), transform 320ms cubic-bezier(0.4, 0, 0.2, 1)",
                   }}
                 >
                   <text
                     x="0"
                     y="-3"
                     fill={
-                      isActive
-                        ? "#ffddcc"
-                        : isUnlocked
-                        ? isHoveredSlice
-                          ? "#ffffff"
-                          : "#e2e8f0"
-                        : "#64748b"
+                      isActive ? "#ffddcc" : isUnlocked ? (isHoveredSlice ? "#ffffff" : "#e2e8f0") : "#64748b"
                     }
                     fontSize="14.5"
                     fontWeight={isActive ? "800" : "700"}
@@ -805,13 +798,7 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
                     x="0"
                     y="11"
                     fill={
-                      isActive
-                        ? "#eaba49"
-                        : isUnlocked
-                        ? isHoveredSlice
-                          ? "#ffd97d"
-                          : "#7fc98f"
-                        : "#e07a6b"
+                      isActive ? "#eaba49" : isUnlocked ? (isHoveredSlice ? "#ffd97d" : "#7fc98f") : "#e07a6b"
                     }
                     fontSize="10"
                     fontWeight="700"
@@ -869,14 +856,7 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
           const inner = getPoint(DIAL.rInner, angle);
           return (
             <g key={`spoke-${index}`}>
-              <line
-                x1={inner.x}
-                y1={inner.y}
-                x2={outer.x}
-                y2={outer.y}
-                stroke="#040609"
-                strokeWidth="3.2"
-              />
+              <line x1={inner.x} y1={inner.y} x2={outer.x} y2={outer.y} stroke="#040609" strokeWidth="3.2" />
               <line
                 x1={inner.x}
                 y1={inner.y}
@@ -914,13 +894,7 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
       </g>
 
       {/* 8. Outer CNC Brass Rim & Right Edge Rail */}
-      <path
-        d={RIM_ARC_PATH}
-        fill="none"
-        stroke="url(#sr-gold-rim)"
-        strokeWidth="4"
-        strokeLinecap="round"
-      />
+      <path d={RIM_ARC_PATH} fill="none" stroke="url(#sr-gold-rim)" strokeWidth="4" strokeLinecap="round" />
       <line
         x1={DIAL.cx}
         y1={DIAL.cy - DIAL.rOuter}
@@ -1019,7 +993,7 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
         {/* Spinning internal turbine vanes during motion */}
         <g
           clipPath="url(#sr-half-clip-mk4)"
-          className={isArmMoving ? "animate-radar-sweep origin-center" : undefined}
+          className={isArmMoving ? "origin-center animate-radar-sweep" : undefined}
           style={{
             transformOrigin: `${DIAL.cx}px ${DIAL.cy}px`,
             transformBox: "view-box",
@@ -1102,12 +1076,12 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
         aria-label="Sector roulette dial instrument"
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        className={`fixed right-0 top-1/2 z-30 hidden -translate-y-1/2 select-none md:flex items-center justify-end transition-all duration-400 ease-out ${
+        className={`duration-400 fixed right-0 top-1/2 z-30 hidden -translate-y-1/2 select-none items-center justify-end transition-all ease-out md:flex ${
           isExpanded
-            ? "w-[260px] h-[520px] drop-shadow-[-22px_0_44px_rgba(0,0,0,0.95)]"
-            : "w-[185px] h-[370px] drop-shadow-[-12px_0_24px_rgba(0,0,0,0.85)]"
+            ? "h-[520px] w-[260px] drop-shadow-[-22px_0_44px_rgba(0,0,0,0.95)]"
+            : "h-[370px] w-[185px] drop-shadow-[-12px_0_24px_rgba(0,0,0,0.85)]"
         } ${isHoverDisabled ? "pointer-events-none cursor-default" : "cursor-pointer"} ${
-          isBlurred ? "pointer-events-none brightness-25 filter blur-md" : ""
+          isBlurred ? "brightness-25 pointer-events-none blur-md filter" : ""
         }`}
       >
         <div className="relative flex h-full w-full items-center justify-end overflow-visible">
@@ -1116,8 +1090,8 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
             aria-hidden={!isExpanded}
             className={`pointer-events-auto absolute right-full top-1/2 mr-3 -translate-y-1/2 transition-all duration-300 ease-out ${
               isExpanded && !isBlurred
-                ? "translate-x-0 opacity-100 scale-100"
-                : "translate-x-6 opacity-0 scale-95 pointer-events-none"
+                ? "translate-x-0 scale-100 opacity-100"
+                : "pointer-events-none translate-x-6 scale-95 opacity-0"
             }`}
           >
             {renderDossierCard()}
@@ -1135,7 +1109,7 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
           >
             {notice && (
               <div
-                className={`rounded-lg border px-3 py-2 font-mono text-[9px] uppercase leading-snug tracking-wider backdrop-blur-md shadow-xl ${
+                className={`rounded-lg border px-3 py-2 font-mono text-[9px] uppercase leading-snug tracking-wider shadow-xl backdrop-blur-md ${
                   notice.tone === "ok"
                     ? "border-[#7fc98f]/70 bg-[#07130c]/95 text-[#7fc98f]"
                     : "border-[#e07a6b]/70 bg-[#160a0a]/95 text-[#e07a6b]"
@@ -1165,15 +1139,15 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
               <span className="mt-0.5 font-mono text-[11px] font-black tracking-wider text-[#ffddcc]">
                 {currentSector.shortCode}
               </span>
-              <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[#7fc98f] animate-ping" />
-              <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[#7fc98f]" />
+              <span className="absolute -right-1 -top-1 h-2 w-2 animate-ping rounded-full bg-[#7fc98f]" />
+              <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-[#7fc98f]" />
             </div>
           </button>
         )}
 
         {/* Mobile Radar Drawer Overlay */}
         {isMobileOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="animate-in fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md duration-200">
             <div className="relative flex w-full max-w-sm flex-col items-center rounded-3xl border border-[#eaba49]/60 bg-[#0d1117] p-5 shadow-[0_0_50px_rgba(0,0,0,0.95)]">
               {/* Close Button */}
               <button
@@ -1191,12 +1165,10 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
               </div>
 
               {/* Centered Dial Container */}
-              <div className="relative my-2 h-[280px] w-[150px] overflow-visible">
-                {renderSvgDial()}
-              </div>
+              <div className="relative my-2 h-[280px] w-[150px] overflow-visible">{renderSvgDial()}</div>
 
               {/* Dossier Card Integrated for Mobile */}
-              <div className="w-full mt-2">{renderDossierCard()}</div>
+              <div className="mt-2 w-full">{renderDossierCard()}</div>
             </div>
           </div>
         )}
