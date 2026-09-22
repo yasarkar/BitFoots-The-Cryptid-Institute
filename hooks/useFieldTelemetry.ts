@@ -97,10 +97,7 @@ export function useFieldTelemetry(options: UseFieldTelemetryOptions = {}) {
           if (data.zkStatus) setZkStatus(data.zkStatus);
           if (data.apexRecord) {
             setApexRecord((prev) => {
-              if (
-                prev.points !== data.apexRecord.points ||
-                prev.name !== data.apexRecord.name
-              ) {
+              if (prev.points !== data.apexRecord.points || prev.name !== data.apexRecord.name) {
                 setHasNewApex(true);
                 setTimeout(() => setHasNewApex(false), 3000);
               }
@@ -192,8 +189,7 @@ export function useFieldTelemetry(options: UseFieldTelemetryOptions = {}) {
     if (isSupabaseConfigured && supabase) {
       try {
         const guestTag =
-          currentUsername ||
-          `hunter_${(currentUserId || Math.random().toString(36)).substring(0, 6)}`;
+          currentUsername || `hunter_${(currentUserId || Math.random().toString(36)).substring(0, 6)}`;
 
         // A. Presence Channel (Active Hunters)
         presenceChannel = supabase.channel("online-hunters", {
@@ -393,9 +389,7 @@ export function useFieldTelemetry(options: UseFieldTelemetryOptions = {}) {
 
   // Derived current sighting
   const currentSighting =
-    sightings.length > 0
-      ? sightings[Math.min(currentIndex, sightings.length - 1)]
-      : null;
+    sightings.length > 0 ? sightings[Math.min(currentIndex, sightings.length - 1)] : null;
 
   // Formatted string with dynamically computed relative time
   const currentDispatchText = currentSighting
