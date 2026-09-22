@@ -111,13 +111,29 @@ CREATE POLICY "Allow public read for profiles"
   FOR SELECT
   USING (true);
 
--- Profiles: Allow insert/upsert for guests and authenticated users
+-- Profiles: WRITE HARDENING (SEC-3)
+-- The previous policy was `FOR ALL USING (true) WITH CHECK (true)`, which let any
+-- anonymous caller who held the public anon key rewrite or wipe every profile row.
+-- Writes are now restricted to the row owner. Guest sessions and guest progress
+-- updates are written by the service-role API routes (`/api/chapter/complete`,
+-- `/api/profile`) which bypass RLS after server-side validation.
+-- NOTE: there is intentionally NO delete policy - deletes stay denied by default.
 DROP POLICY IF EXISTS "Allow upsert for profiles" ON public.profiles;
-CREATE POLICY "Allow upsert for profiles"
+DROP POLICY IF EXISTS "Allow insert for own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Allow update for own profile" ON public.profiles;
+
+CREATE POLICY "Allow insert for own profile"
   ON public.profiles
-  FOR ALL
-  USING (true)
-  WITH CHECK (true);
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() = id);
+
+CREATE POLICY "Allow update for own profile"
+  ON public.profiles
+  FOR UPDATE
+  TO authenticated
+  USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
 
 -- Chapter Scores: Public can read scores for leaderboard and statistics
 DROP POLICY IF EXISTS "Allow public read for chapter_scores" ON public.chapter_scores;
