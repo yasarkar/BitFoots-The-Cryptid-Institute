@@ -107,17 +107,17 @@ export function useHunterSession() {
         const stored = localStorage.getItem(GUEST_STORAGE_KEY);
         if (stored) {
           const parsed = JSON.parse(stored);
-          if (parsed && parsed.username && parsed.isLoggedIn) {
+          if (parsed && (parsed.username || parsed.zcashAddress || parsed.userId)) {
             let restoredAvatar = parsed.avatarUrl;
             if (!restoredAvatar || restoredAvatar.includes("dicebear")) {
               restoredAvatar = getDefaultBitfootAvatar(parsed.username || parsed.userId);
             }
             activeProfile = {
               userId: isValidUuid(parsed.userId) ? parsed.userId : generateUuid(),
-              username: parsed.username,
+              username: parsed.username || "",
               avatarUrl: restoredAvatar,
-              isGuest: parsed.isGuest ?? false,
-              isLoggedIn: true,
+              isGuest: parsed.isGuest ?? true,
+              isLoggedIn: parsed.isLoggedIn ?? Boolean(parsed.username),
               zcashAddress: parsed.zcashAddress || "",
               authProvider: parsed.authProvider || (parsed.isGuest ? "guest" : undefined),
               unlockedSectors:
@@ -212,14 +212,30 @@ export function useHunterSession() {
         } else if (activeProfile?.userId && isValidUuid(activeProfile.userId)) {
           // If guest has existing progress in Supabase, load it
           fetchHunterProfile(activeProfile.userId).then((guestDbProfile) => {
-            if (guestDbProfile && Array.isArray(guestDbProfile.unlocked_sectors)) {
+            if (guestDbProfile) {
+              const cloudSectors = Array.isArray(guestDbProfile.unlocked_sectors)
+                ? guestDbProfile.unlocked_sectors
+                : [];
               const merged = Array.from(
-                new Set([...initialClearances, ...guestDbProfile.unlocked_sectors])
+                new Set([...initialClearances, ...cloudSectors])
               ).sort((a, b) => a - b);
-              setProfile((prev) => ({ ...prev, unlockedSectors: merged }));
-              try {
-                localStorage.setItem(CLEARANCES_STORAGE_KEY, JSON.stringify(merged));
-              } catch {}
+              setProfile((prev) => {
+                const nextZcash = prev.zcashAddress || guestDbProfile.zcash_address || "";
+                const nextUsername = prev.username || guestDbProfile.x_username || "";
+                const nextAvatar = prev.avatarUrl || guestDbProfile.x_avatar_url || "";
+                const updated: HunterProfile = {
+                  ...prev,
+                  unlockedSectors: merged,
+                  zcashAddress: nextZcash,
+                  username: nextUsername || prev.username,
+                  avatarUrl: nextAvatar || prev.avatarUrl,
+                };
+                try {
+                  localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(updated));
+                  localStorage.setItem(CLEARANCES_STORAGE_KEY, JSON.stringify(merged));
+                } catch {}
+                return updated;
+              });
             }
           });
         }

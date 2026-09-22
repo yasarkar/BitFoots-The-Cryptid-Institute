@@ -61,9 +61,21 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
+      let initialZcash = profile.zcashAddress || "";
+      if (!initialZcash && typeof window !== "undefined") {
+        try {
+          const stored = localStorage.getItem("bitfoot_hunter_guest_session");
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed?.zcashAddress) {
+              initialZcash = parsed.zcashAddress;
+            }
+          }
+        } catch {}
+      }
       setUsernameInput(profile.username || "");
       setAvatarUrlInput(profile.avatarUrl || "");
-      setZcashInput(profile.zcashAddress || "");
+      setZcashInput(initialZcash);
       setSaveSuccess(false);
       setErrorMsg(null);
       setShowValidNotice(false);
@@ -304,30 +316,59 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 </button>
               </div>
 
-              {/* Hunter UUID Telemetry */}
-              <div className="flex items-center justify-center gap-2 pt-1 font-mono text-[10px] text-[#7d8898] sm:justify-start">
-                <span className="flex items-center gap-1">
-                  <span>UUID:</span>
-                  <span className="max-w-[150px] select-all truncate text-[#aab6c9] sm:max-w-[250px]">
-                    {profile.userId || "N/A"}
+              {/* Hunter Dossier Telemetry: UUID & Zcash Address */}
+              <div className="flex flex-col gap-1 pt-1 font-mono text-[10px] text-[#7d8898] sm:justify-start">
+                <div className="flex items-center justify-center gap-2 sm:justify-start">
+                  <span className="flex items-center gap-1">
+                    <span>UUID:</span>
+                    <span className="max-w-[150px] select-all truncate text-[#aab6c9] sm:max-w-[250px]">
+                      {profile.userId || "N/A"}
+                    </span>
                   </span>
-                </span>
-                <button
-                  type="button"
-                  onClick={handleCopyUserId}
-                  className="flex items-center gap-0.5 p-0.5 text-[#7d8898] transition-colors hover:text-[#eaba49]"
-                >
-                  {copiedId ? (
-                    <>
-                      <Check className="h-2.5 w-2.5 text-[#7fc98f]" />
-                      <span className="text-[#7fc98f]">Copied</span>
-                    </>
-                  ) : (
-                    <>
+                  <button
+                    type="button"
+                    onClick={handleCopyUserId}
+                    className="flex items-center gap-0.5 p-0.5 text-[#7d8898] transition-colors hover:text-[#eaba49]"
+                    title="Copy Hunter UUID"
+                  >
+                    {copiedId ? (
+                      <>
+                        <Check className="h-2.5 w-2.5 text-[#7fc98f]" />
+                        <span className="text-[#7fc98f]">Copied</span>
+                      </>
+                    ) : (
                       <Copy className="h-2.5 w-2.5" />
-                    </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Zcash Shielded Address Telemetry */}
+                <div className="flex items-center justify-center gap-2 sm:justify-start">
+                  <span className="flex items-center gap-1">
+                    <Coins className="h-3 w-3 text-[#eaba49]" />
+                    <span>ZCASH:</span>
+                    <span className="max-w-[150px] select-all truncate font-mono text-[#ffddcc] sm:max-w-[250px]">
+                      {zcashInput || profile.zcashAddress || "Not configured"}
+                    </span>
+                  </span>
+                  {(zcashInput || profile.zcashAddress) && (
+                    <button
+                      type="button"
+                      onClick={handleCopyZec}
+                      className="flex items-center gap-0.5 p-0.5 text-[#7d8898] transition-colors hover:text-[#eaba49]"
+                      title="Copy Zcash Address"
+                    >
+                      {copiedZec ? (
+                        <>
+                          <Check className="h-2.5 w-2.5 text-[#7fc98f]" />
+                          <span className="text-[#7fc98f]">Copied</span>
+                        </>
+                      ) : (
+                        <Copy className="h-2.5 w-2.5" />
+                      )}
+                    </button>
                   )}
-                </button>
+                </div>
               </div>
             </div>
           </div>
@@ -395,13 +436,21 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 className={`w-full rounded-xl border bg-[#0f1216] px-3.5 py-2 pr-8 font-mono text-xs text-[#ffddcc] outline-none transition-colors ${
                   showValidNotice
                     ? "border-[#7fc98f]/80 focus:border-[#7fc98f]"
-                    : zcashValidation.status === "invalid_prefix"
-                      ? "border-[#e07a6b]/80 focus:border-[#e07a6b]"
-                      : "border-[#3a475c] focus:border-[#eaba49]"
+                    : zcashValidation.status === "valid"
+                      ? "border-[#7fc98f]/40 focus:border-[#7fc98f]"
+                      : zcashValidation.status === "invalid_prefix"
+                        ? "border-[#e07a6b]/80 focus:border-[#e07a6b]"
+                        : "border-[#3a475c] focus:border-[#eaba49]"
                 }`}
               />
               <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2">
-                {showValidNotice && <Check className="h-4 w-4 text-[#7fc98f] animate-in fade-in duration-150" />}
+                {zcashValidation.status === "valid" && (
+                  <Check
+                    className={`h-4 w-4 transition-colors ${
+                      showValidNotice ? "text-[#7fc98f]" : "text-[#7fc98f]/60"
+                    }`}
+                  />
+                )}
                 {zcashValidation.status === "invalid_prefix" && (
                   <AlertCircle className="h-4 w-4 text-[#e07a6b]" />
                 )}
@@ -414,6 +463,11 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 <p className="flex items-center gap-1 font-mono text-[11px] text-[#7fc98f] animate-in fade-in duration-200">
                   <ShieldCheck className="h-3 w-3" />
                   <span>Valid Zcash Shielded Address</span>
+                </p>
+              ) : zcashValidation.status === "valid" ? (
+                <p className="flex items-center gap-1 font-mono text-[11px] text-[#aab6c9]">
+                  <ShieldCheck className="h-3 w-3 text-[#7fc98f]" />
+                  <span>Shielded Address configured for research grants & confidential airdrops</span>
                 </p>
               ) : zcashValidation.status === "invalid_prefix" ? (
                 <p className="flex items-center gap-1 font-mono text-[11px] text-[#e07a6b] animate-in fade-in duration-200">
