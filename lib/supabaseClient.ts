@@ -30,11 +30,21 @@ export async function fetchHunterProfile(userId: string) {
   if (!supabase || !isValidUuid(userId)) return null;
 
   try {
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("profiles")
-      .select("id, x_username, x_avatar_url, zcash_address, is_guest, unlocked_sectors, highest_score")
+      .select("id, x_username, x_avatar_url, is_custom_avatar, zcash_address, is_guest, unlocked_sectors, highest_score")
       .eq("id", userId)
       .maybeSingle();
+
+    if (error && error.message?.includes("is_custom_avatar")) {
+      const fallback = await supabase
+        .from("profiles")
+        .select("id, x_username, x_avatar_url, zcash_address, is_guest, unlocked_sectors, highest_score")
+        .eq("id", userId)
+        .maybeSingle();
+      data = fallback.data ? { ...fallback.data, is_custom_avatar: false } : null;
+      error = fallback.error;
+    }
 
     if (error) {
       console.warn("Error fetching hunter profile from Supabase:", error.message);
@@ -51,6 +61,7 @@ export interface HunterProfileSyncPayload {
   userId: string;
   username?: string;
   avatarUrl?: string;
+  isCustomAvatar?: boolean;
   zcashAddress?: string;
   isGuest?: boolean;
   unlockedSectors?: number[];

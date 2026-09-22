@@ -8,13 +8,14 @@ export const dynamic = "force-dynamic";
 
 const USERNAME_MAX_LENGTH = 40;
 const AVATAR_URL_MAX_LENGTH = 512;
-const ZCASH_ADDRESS_MAX_LENGTH = 128;
+const ZCASH_ADDRESS_MAX_LENGTH = 320; // Zcash Unified Addresses (u1...) are typically 213+ characters
 const FALLBACK_AVATAR_URL = "/bitfoot-heads/bitfoot-head-01.png";
 
 export interface ProfileSyncRequest {
   userId: string;
   username?: string;
   avatarUrl?: string;
+  isCustomAvatar?: boolean;
   zcashAddress?: string;
   isGuest?: boolean;
   unlockedSectors?: number[];
@@ -78,6 +79,8 @@ export async function POST(req: NextRequest) {
     const zcashAddress = sanitizeZcashAddress(body.zcashAddress);
     const unlockedSectors =
       body.unlockedSectors === undefined ? undefined : sanitizeUnlockedSectors(body.unlockedSectors);
+    const isCustomAvatar =
+      body.isCustomAvatar !== undefined ? Boolean(body.isCustomAvatar) : undefined;
 
     const record: Record<string, unknown> = {
       id: body.userId,
@@ -86,6 +89,7 @@ export async function POST(req: NextRequest) {
 
     if (username) record.x_username = username;
     if (avatarUrl) record.x_avatar_url = avatarUrl;
+    if (isCustomAvatar !== undefined) record.is_custom_avatar = isCustomAvatar;
     if (zcashAddress) record.zcash_address = zcashAddress;
     if (body.isGuest !== undefined) record.is_guest = Boolean(body.isGuest);
     if (unlockedSectors) record.unlocked_sectors = unlockedSectors;

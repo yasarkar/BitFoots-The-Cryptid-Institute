@@ -62,7 +62,13 @@ export interface MockLeaderboardEntry {
 const globalDevStore: {
   profiles: Map<
     string,
-    { x_username: string; x_avatar_url: string; is_guest: boolean; unlocked_sectors: number[] }
+    {
+      x_username: string;
+      x_avatar_url: string;
+      is_custom_avatar?: boolean;
+      is_guest: boolean;
+      unlocked_sectors: number[];
+    }
   >;
   scores: Array<{
     user_id: string;
@@ -145,6 +151,7 @@ export const devMockStore = {
     globalDevStore.profiles.set(data.userId, {
       x_username: data.username,
       x_avatar_url: data.avatarUrl,
+      is_custom_avatar: existing?.is_custom_avatar ?? false,
       is_guest: data.isGuest,
       unlocked_sectors: updatedUnlocked,
     });

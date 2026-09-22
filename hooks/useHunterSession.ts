@@ -16,11 +16,18 @@ import {
 } from "@/lib/supabaseClient";
 import { gameEventBus } from "@/lib/eventBus";
 import { generateUuid } from "@/lib/uuid";
+import {
+  extractIdentityDetails,
+  resolveActiveAvatar,
+} from "@/lib/avatarPriority";
 
 export interface HunterProfile {
   userId: string;
   username: string;
   avatarUrl: string;
+  isCustomAvatar?: boolean;
+  xAvatarUrl?: string;
+  googleAvatarUrl?: string;
   isGuest: boolean;
   isLoggedIn: boolean;
   zcashAddress?: string;
@@ -111,11 +118,93 @@ function getStoredClearances(): number[] {
   return [1];
 }
 
+async function buildAuthenticatedProfile(
+  session: any,
+  activeFallback?: HunterProfile | null,
+  initialClearances: number[] = [1]
+): Promise<{ authProfile: HunterProfile; cloudSectorsCount: number }> {
+  const userMeta = session.user.user_metadata;
+  const rawUsername = extractUsername(userMeta, session.user.id);
+  const { xAvatar, googleAvatar, xUsername, googleName } = extractIdentityDetails(session.user);
+  const linkedProviders = extractLinkedProviders(session.user);
+  const rawProvider = session.user.app_metadata?.provider;
+  const authProvider =
+    rawProvider === "twitter" || rawProvider === "x" || linkedProviders.includes("twitter")
+      ? "twitter"
+      : rawProvider === "google" || linkedProviders.includes("google")
+        ? "google"
+        : undefined;
+
+  // Fetch cloud progress from Supabase
+  const cloudProfile = await fetchHunterProfile(session.user.id);
+  const cloudSectors: number[] = Array.isArray(cloudProfile?.unlocked_sectors)
+    ? cloudProfile.unlocked_sectors
+    : [];
+
+  const mergedSectors = Array.from(new Set([...initialClearances, ...cloudSectors, 1])).sort(
+    (a, b) => a - b
+  );
+
+  const isCustomAvatar = Boolean(
+    cloudProfile?.is_custom_avatar ?? activeFallback?.isCustomAvatar ?? false
+  );
+
+  const resolved = resolveActiveAvatar({
+    isCustomAvatar,
+    customAvatarUrl: cloudProfile?.x_avatar_url || activeFallback?.avatarUrl,
+    xAvatar,
+    googleAvatar,
+    fallbackAvatar: getDefaultBitfootAvatar(session.user.id),
+  });
+
+  // Priority rule enforcement: If user did NOT choose a custom avatar and X avatar is available,
+  // but cloud profile still has Google avatar (or older avatar), sync X avatar to Supabase.
+  if (!resolved.isCustomAvatar && xAvatar && cloudProfile && cloudProfile.x_avatar_url !== xAvatar) {
+    syncHunterProfile({
+      userId: session.user.id,
+      avatarUrl: xAvatar,
+      isCustomAvatar: false,
+    }).catch((e) => console.warn("Failed to sync X avatar priority upgrade:", e));
+  }
+
+  const effectiveZcash =
+    cloudProfile?.zcash_address ||
+    (userMeta as any)?.zcash_address ||
+    activeFallback?.zcashAddress ||
+    "";
+
+  // If user has a local Zcash address that hasn't made it to cloudProfile yet, sync it to Supabase!
+  if (!cloudProfile?.zcash_address && effectiveZcash && isValidUuid(session.user.id)) {
+    syncHunterProfile({
+      userId: session.user.id,
+      zcashAddress: effectiveZcash,
+    }).catch((e) => console.warn("Failed to sync zcash address to cloud:", e));
+  }
+
+  const authProfile: HunterProfile = {
+    userId: session.user.id,
+    username: cloudProfile?.x_username || xUsername || googleName || rawUsername,
+    avatarUrl: resolved.avatarUrl,
+    isCustomAvatar: resolved.isCustomAvatar,
+    xAvatarUrl: xAvatar,
+    googleAvatarUrl: googleAvatar,
+    isGuest: false,
+    isLoggedIn: true,
+    zcashAddress: effectiveZcash,
+    authProvider,
+    linkedProviders,
+    unlockedSectors: mergedSectors,
+  };
+
+  return { authProfile, cloudSectorsCount: cloudSectors.length };
+}
+
 export function useHunterSession() {
   const [profile, setProfile] = useState<HunterProfile>(() => ({
     userId: "",
     username: "",
     avatarUrl: "/bitfoot-heads/bitfoot-head-01.png",
+    isCustomAvatar: false,
     isGuest: true,
     isLoggedIn: false,
     unlockedSectors: [1],
@@ -141,6 +230,9 @@ export function useHunterSession() {
               userId: isValidUuid(parsed.userId) ? parsed.userId : generateUuid(),
               username: parsed.username || "",
               avatarUrl: restoredAvatar,
+              isCustomAvatar: Boolean(parsed.isCustomAvatar),
+              xAvatarUrl: parsed.xAvatarUrl,
+              googleAvatarUrl: parsed.googleAvatarUrl,
               isGuest: parsed.isGuest ?? true,
               isLoggedIn: parsed.isLoggedIn ?? Boolean(parsed.username),
               zcashAddress: parsed.zcashAddress || "",
@@ -170,6 +262,7 @@ export function useHunterSession() {
         userId: guestUuid,
         username: "",
         avatarUrl: guestAvatar,
+        isCustomAvatar: false,
         isGuest: true,
         isLoggedIn: false,
         zcashAddress: "",
@@ -191,55 +284,22 @@ export function useHunterSession() {
     if (isSupabaseConfigured && supabase) {
       supabase.auth.getSession().then(async ({ data: { session } }) => {
         if (session?.user) {
-          const userMeta = session.user.user_metadata;
-          const username = extractUsername(userMeta, session.user.id);
-          const avatarUrl = extractAvatar(userMeta, username);
-          const linkedProviders = extractLinkedProviders(session.user);
-          const rawProvider = session.user.app_metadata?.provider;
-          const authProvider =
-            rawProvider === "twitter" || rawProvider === "x" || linkedProviders.includes("twitter")
-              ? "twitter"
-              : rawProvider === "google" || linkedProviders.includes("google")
-                ? "google"
-                : undefined;
-
-          // Fetch cloud progress from Supabase
-          const cloudProfile = await fetchHunterProfile(session.user.id);
-          const cloudSectors: number[] = Array.isArray(cloudProfile?.unlocked_sectors)
-            ? cloudProfile.unlocked_sectors
-            : [];
-
-          const mergedSectors = Array.from(new Set([...initialClearances, ...cloudSectors, 1])).sort(
-            (a, b) => a - b
+          const { authProfile, cloudSectorsCount } = await buildAuthenticatedProfile(
+            session,
+            activeProfile,
+            initialClearances
           );
-
-          const authProfile: HunterProfile = {
-            userId: session.user.id,
-            username: cloudProfile?.x_username || username,
-            avatarUrl: cloudProfile?.x_avatar_url || avatarUrl,
-            isGuest: false,
-            isLoggedIn: true,
-            zcashAddress:
-              cloudProfile?.zcash_address ||
-              (userMeta as any)?.zcash_address ||
-              activeProfile?.zcashAddress ||
-              "",
-            authProvider,
-            linkedProviders,
-            unlockedSectors: mergedSectors,
-          };
 
           setProfile(authProfile);
           gameEventBus.emit("AVATAR_CHANGED", { avatarUrl: authProfile.avatarUrl });
 
           try {
             localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(authProfile));
-            localStorage.setItem(CLEARANCES_STORAGE_KEY, JSON.stringify(mergedSectors));
+            localStorage.setItem(CLEARANCES_STORAGE_KEY, JSON.stringify(authProfile.unlockedSectors));
           } catch {}
 
-          // Ensure Supabase has the latest merged clearances
-          if (mergedSectors.length > cloudSectors.length) {
-            saveHunterProgress(session.user.id, mergedSectors);
+          if (authProfile.unlockedSectors.length > cloudSectorsCount) {
+            saveHunterProgress(session.user.id, authProfile.unlockedSectors);
           }
         } else if (activeProfile?.userId && isValidUuid(activeProfile.userId)) {
           // If guest has existing progress in Supabase, load it
@@ -261,6 +321,7 @@ export function useHunterSession() {
                   zcashAddress: nextZcash,
                   username: nextUsername || prev.username,
                   avatarUrl: nextAvatar || prev.avatarUrl,
+                  isCustomAvatar: guestDbProfile.is_custom_avatar ?? prev.isCustomAvatar,
                 };
                 try {
                   localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(updated));
@@ -276,46 +337,34 @@ export function useHunterSession() {
 
       const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
         if (session?.user) {
-          const userMeta = session.user.user_metadata;
-          const username = extractUsername(userMeta, session.user.id);
-          const avatarUrl = extractAvatar(userMeta, username);
-          const linkedProviders = extractLinkedProviders(session.user);
-          const rawProvider = session.user.app_metadata?.provider;
-          const authProvider =
-            rawProvider === "twitter" || rawProvider === "x" || linkedProviders.includes("twitter")
-              ? "twitter"
-              : rawProvider === "google" || linkedProviders.includes("google")
-                ? "google"
-                : undefined;
+          let latestFallback: HunterProfile | null = activeProfile;
+          if (typeof window !== "undefined") {
+            try {
+              const stored = localStorage.getItem(GUEST_STORAGE_KEY);
+              if (stored) {
+                const parsed = JSON.parse(stored);
+                if (parsed) latestFallback = parsed;
+              }
+            } catch {}
+          }
 
-          const cloudProfile = await fetchHunterProfile(session.user.id);
-          const cloudSectors: number[] = Array.isArray(cloudProfile?.unlocked_sectors)
-            ? cloudProfile.unlocked_sectors
-            : [];
-
-          const mergedSectors = Array.from(new Set([...getStoredClearances(), ...cloudSectors, 1])).sort(
-            (a, b) => a - b
+          const { authProfile, cloudSectorsCount } = await buildAuthenticatedProfile(
+            session,
+            latestFallback,
+            getStoredClearances()
           );
-
-          const authProfile: HunterProfile = {
-            userId: session.user.id,
-            username: cloudProfile?.x_username || username,
-            avatarUrl: cloudProfile?.x_avatar_url || avatarUrl,
-            isGuest: false,
-            isLoggedIn: true,
-            zcashAddress: cloudProfile?.zcash_address || (userMeta as any)?.zcash_address || "",
-            authProvider,
-            linkedProviders,
-            unlockedSectors: mergedSectors,
-          };
 
           setProfile(authProfile);
           gameEventBus.emit("AVATAR_CHANGED", { avatarUrl: authProfile.avatarUrl });
 
           try {
             localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(authProfile));
-            localStorage.setItem(CLEARANCES_STORAGE_KEY, JSON.stringify(mergedSectors));
+            localStorage.setItem(CLEARANCES_STORAGE_KEY, JSON.stringify(authProfile.unlockedSectors));
           } catch {}
+
+          if (authProfile.unlockedSectors.length > cloudSectorsCount) {
+            saveHunterProgress(session.user.id, authProfile.unlockedSectors);
+          }
         }
       });
 
@@ -372,10 +421,17 @@ export function useHunterSession() {
   );
 
   const updateProfile = useCallback(
-    (updates: { username?: string; avatarUrl?: string; zcashAddress?: string }) => {
+    (updates: {
+      username?: string;
+      avatarUrl?: string;
+      isCustomAvatar?: boolean;
+      zcashAddress?: string;
+    }) => {
       setProfile((prev) => {
         const nextUsername = updates.username !== undefined ? updates.username.trim() : prev.username;
         const nextAvatar = updates.avatarUrl !== undefined ? updates.avatarUrl : prev.avatarUrl;
+        const nextIsCustom =
+          updates.isCustomAvatar !== undefined ? Boolean(updates.isCustomAvatar) : prev.isCustomAvatar;
         const nextZcash =
           updates.zcashAddress !== undefined ? updates.zcashAddress.trim() : prev.zcashAddress;
 
@@ -383,6 +439,7 @@ export function useHunterSession() {
           ...prev,
           username: nextUsername || prev.username,
           avatarUrl: nextAvatar || prev.avatarUrl,
+          isCustomAvatar: nextIsCustom,
           zcashAddress: nextZcash,
           isGuest: prev.authProvider && prev.authProvider !== "guest" ? false : (prev.isGuest ?? true),
           isLoggedIn: true,
@@ -405,6 +462,7 @@ export function useHunterSession() {
             userId: prev.userId,
             username: nextUsername,
             avatarUrl: nextAvatar,
+            isCustomAvatar: nextIsCustom,
             zcashAddress: nextZcash || undefined,
             isGuest: prev.isGuest ?? false,
             unlockedSectors: prev.unlockedSectors,
@@ -502,6 +560,7 @@ export function useHunterSession() {
       userId: newGuestUuid,
       username: "",
       avatarUrl: guestAvatar,
+      isCustomAvatar: false,
       isGuest: true,
       isLoggedIn: false,
       zcashAddress: "",

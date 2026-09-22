@@ -12,6 +12,10 @@ import {
   Link as LinkIcon,
   Coins,
   Download,
+  Sparkles,
+  Palette,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { HunterProfile } from "@/hooks/useHunterSession";
 import { ExportCardModal } from "./ExportCardModal";
@@ -25,7 +29,12 @@ interface ProfileModalProps {
   onClose: () => void;
   profile: HunterProfile;
   isSupabaseConfigured: boolean;
-  onUpdateProfile: (updates: { username?: string; avatarUrl?: string; zcashAddress?: string }) => void;
+  onUpdateProfile: (updates: {
+    username?: string;
+    avatarUrl?: string;
+    isCustomAvatar?: boolean;
+    zcashAddress?: string;
+  }) => void;
   onLoginWithGoogle: () => Promise<any>;
   onLoginWithX: () => Promise<any>;
   onLinkGoogle?: () => Promise<any>;
@@ -51,6 +60,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 }) => {
   const [usernameInput, setUsernameInput] = useState<string>("");
   const [avatarUrlInput, setAvatarUrlInput] = useState<string>("");
+  const [isCustomAvatarInput, setIsCustomAvatarInput] = useState<boolean>(false);
+  const [showGallery, setShowGallery] = useState<boolean>(false);
   const [zcashInput, setZcashInput] = useState<string>("");
   const [copiedId, setCopiedId] = useState<boolean>(false);
   const [copiedZec, setCopiedZec] = useState<boolean>(false);
@@ -82,7 +93,12 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       }
       setUsernameInput(profile.username || "");
       setAvatarUrlInput(profile.avatarUrl || "");
+      setIsCustomAvatarInput(Boolean(profile.isCustomAvatar));
+      setShowGallery(false);
       setZcashInput(initialZcash);
+      if (initialZcash && !profile.zcashAddress) {
+        onUpdateProfile({ zcashAddress: initialZcash });
+      }
       setSaveSuccess(false);
       setErrorMsg(null);
       setShowValidNotice(false);
@@ -121,7 +137,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         errorTimerRef.current = null;
       }
     };
-  }, [isOpen, profile.username, profile.avatarUrl, profile.zcashAddress, profile.userId, onUpdateProfile]);
+  }, [isOpen, profile.username, profile.avatarUrl, profile.isCustomAvatar, profile.zcashAddress, profile.userId, onUpdateProfile]);
 
   if (!isOpen) return null;
 
@@ -190,6 +206,21 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     const available = BITFOOT_HEADS.filter((img) => img !== avatarUrlInput);
     const chosen = available[Math.floor(Math.random() * available.length)] || BITFOOT_HEADS[0];
     setAvatarUrlInput(chosen);
+    setIsCustomAvatarInput(true);
+    setSaveSuccess(false);
+  };
+
+  const handleSelectBitfootHead = (headUrl: string) => {
+    setAvatarUrlInput(headUrl);
+    setIsCustomAvatarInput(true);
+    setSaveSuccess(false);
+  };
+
+  const handleSelectOAuthAvatar = (url: string, isFromX: boolean) => {
+    setAvatarUrlInput(url);
+    // Explicitly picking Google avatar when X is linked is treated as custom choice
+    // Picking X avatar adheres to default priority
+    setIsCustomAvatarInput(!isFromX);
     setSaveSuccess(false);
   };
 
@@ -270,6 +301,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     onUpdateProfile({
       username: cleanName,
       avatarUrl: avatarUrlInput || profile.avatarUrl,
+      isCustomAvatar: isCustomAvatarInput,
       zcashAddress: cleanZcash,
     });
 
@@ -315,7 +347,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         {/* Profile Card Summary & Avatar Customizer */}
         <div className="space-y-3 rounded-xl border border-[#3a475c]/70 bg-[#0f1216]/90 p-4">
           <div className="flex flex-col items-center gap-4 sm:flex-row">
-            {/* Avatar with Randomizer action */}
+            {/* Avatar preview with active border */}
             <div className="group relative">
               <img
                 src={avatarUrlInput || profile.avatarUrl}
@@ -325,6 +357,11 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   (e.target as HTMLImageElement).src = `/bitfoot-heads/bitfoot-head-01.png`;
                 }}
               />
+              {isCustomAvatarInput && (
+                <span className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-[#eaba49] bg-black text-[#eaba49] shadow">
+                  <Sparkles className="h-3 w-3" />
+                </span>
+              )}
             </div>
 
             {/* Hunter Info & Avatar Seed Buttons */}
@@ -333,18 +370,95 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 <h3 className="font-mono text-base font-bold text-[#ffddcc] sm:text-lg">
                   {usernameInput || profile.username || "Anonymous Hunter"}
                 </h3>
+                {/* Active Avatar Source Indicator */}
+                {isCustomAvatarInput || (avatarUrlInput && avatarUrlInput.includes("bitfoot-head")) ? (
+                  <span className="flex items-center gap-1 rounded-md border border-[#eaba49]/50 bg-[#eaba49]/10 px-1.5 py-0.5 font-mono text-[9px] text-[#eaba49]">
+                    <Sparkles className="h-2.5 w-2.5" />
+                    <span>Custom Avatar</span>
+                  </span>
+                ) : profile.xAvatarUrl && (avatarUrlInput === profile.xAvatarUrl || avatarUrlInput.includes("twimg")) ? (
+                  <span className="flex items-center gap-1 rounded-md border border-[#7fc98f]/40 bg-[#7fc98f]/10 px-1.5 py-0.5 font-mono text-[9px] text-[#7fc98f]">
+                    <Check className="h-2.5 w-2.5" />
+                    <span>X Avatar</span>
+                  </span>
+                ) : profile.googleAvatarUrl && (avatarUrlInput === profile.googleAvatarUrl || avatarUrlInput.includes("googleusercontent")) ? (
+                  <span className="flex items-center gap-1 rounded-md border border-[#3a475c] bg-white/5 px-1.5 py-0.5 font-mono text-[9px] text-[#ffddcc]">
+                    <Check className="h-2.5 w-2.5" />
+                    <span>Google Avatar</span>
+                  </span>
+                ) : null}
               </div>
 
-              {/* Avatar Generator Button & Export Hunter Card Button */}
-              <div className="flex flex-wrap items-center justify-center gap-2 pt-1 sm:justify-start">
+              {/* Avatar Generator Button & Action Buttons */}
+              <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1 sm:justify-start">
                 <button
                   type="button"
                   onClick={handleRandomizeAvatar}
                   className="bitfoots-btn flex items-center gap-1 rounded-md px-2 py-0.5 font-mono text-[10px] transition-all hover:border-[#eaba49]/60 hover:text-[#eaba49]"
                 >
                   <Dices className="h-3 w-3 text-[#eaba49]" />
-                  <span>Roll Random Avatar</span>
+                  <span>Roll Random</span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowGallery((prev) => !prev)}
+                  className={`bitfoots-btn flex items-center gap-1 rounded-md px-2 py-0.5 font-mono text-[10px] transition-all ${
+                    showGallery
+                      ? "border-[#eaba49] bg-[#eaba49]/20 text-[#eaba49]"
+                      : "hover:border-[#eaba49]/60 hover:text-[#eaba49]"
+                  }`}
+                >
+                  <Palette className="h-3 w-3 text-[#eaba49]" />
+                  <span>Pick Head (18)</span>
+                  {showGallery ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />}
+                </button>
+
+                {/* Quick select linked X avatar if available */}
+                {profile.xAvatarUrl && (
+                  <button
+                    type="button"
+                    onClick={() => handleSelectOAuthAvatar(profile.xAvatarUrl!, true)}
+                    className={`bitfoots-btn flex items-center gap-1 rounded-md px-2 py-0.5 font-mono text-[10px] transition-all ${
+                      avatarUrlInput === profile.xAvatarUrl
+                        ? "border-[#7fc98f] bg-[#7fc98f]/20 text-[#7fc98f]"
+                        : "hover:border-[#7fc98f]/60 hover:text-[#7fc98f]"
+                    }`}
+                  >
+                    <img
+                      src={profile.xAvatarUrl}
+                      alt="X avatar"
+                      className="h-3 w-3 rounded-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                      }}
+                    />
+                    <span>Use X Avatar</span>
+                  </button>
+                )}
+
+                {/* Quick select linked Google avatar if available */}
+                {profile.googleAvatarUrl && (
+                  <button
+                    type="button"
+                    onClick={() => handleSelectOAuthAvatar(profile.googleAvatarUrl!, false)}
+                    className={`bitfoots-btn flex items-center gap-1 rounded-md px-2 py-0.5 font-mono text-[10px] transition-all ${
+                      avatarUrlInput === profile.googleAvatarUrl
+                        ? "border-[#eaba49] bg-[#eaba49]/20 text-[#eaba49]"
+                        : "hover:border-[#eaba49]/60 hover:text-[#eaba49]"
+                    }`}
+                  >
+                    <img
+                      src={profile.googleAvatarUrl}
+                      alt="Google avatar"
+                      className="h-3 w-3 rounded-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                      }}
+                    />
+                    <span>Use Google Avatar</span>
+                  </button>
+                )}
 
                 <button
                   type="button"
@@ -352,7 +466,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   className="bitfoots-btn flex items-center gap-1 rounded-md border-[#eaba49]/70 px-2 py-0.5 font-mono text-[10px] text-[#ffddcc] transition-all hover:bg-[#eaba49]/15"
                 >
                   <Download className="h-3 w-3 text-[#eaba49]" />
-                  <span>Export Hunter ID Card</span>
+                  <span>Export ID Card</span>
                 </button>
               </div>
 
@@ -381,6 +495,49 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Expandable Gallery of 18 BitFoot Heads */}
+          {showGallery && (
+            <div className="animate-in fade-in zoom-in-95 space-y-2 rounded-xl border border-[#eaba49]/40 bg-black/75 p-3 duration-200">
+              <div className="flex items-center justify-between border-b border-[#3a475c]/60 pb-1.5">
+                <span className="flex items-center gap-1.5 font-mono text-[11px] font-semibold text-[#eaba49]">
+                  <Palette className="h-3.5 w-3.5" />
+                  <span>BitFoot Operative Heads (18 Authentic Avatars)</span>
+                </span>
+                <span className="font-mono text-[10px] text-[#7d8898]">Click to select & equip</span>
+              </div>
+              <div className="grid grid-cols-6 gap-2 sm:grid-cols-9">
+                {BITFOOT_HEADS.map((head, idx) => {
+                  const isSelected = avatarUrlInput === head;
+                  const headNum = (idx + 1).toString().padStart(2, "0");
+                  return (
+                    <button
+                      key={head}
+                      type="button"
+                      onClick={() => handleSelectBitfootHead(head)}
+                      title={`BitFoot Head ${headNum}`}
+                      className={`group relative flex items-center justify-center rounded-xl p-1 transition-all ${
+                        isSelected
+                          ? "border-2 border-[#eaba49] bg-[#eaba49]/25 shadow-md shadow-[#eaba49]/20 scale-105"
+                          : "border border-[#3a475c] bg-[#0f1216] hover:border-[#eaba49]/70 hover:scale-105"
+                      }`}
+                    >
+                      <img
+                        src={head}
+                        alt={`Head ${headNum}`}
+                        className="h-8 w-8 sm:h-9 sm:w-9 object-contain"
+                      />
+                      {isSelected && (
+                        <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#eaba49] text-black shadow">
+                          <Check className="h-2 w-2 stroke-[3]" />
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Edit Form */}

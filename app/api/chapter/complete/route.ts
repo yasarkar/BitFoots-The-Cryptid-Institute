@@ -38,7 +38,7 @@ export interface ChapterCompleteRequest {
 
 const USERNAME_MAX_LENGTH = 40;
 const AVATAR_URL_MAX_LENGTH = 512;
-const ZCASH_ADDRESS_MAX_LENGTH = 128;
+const ZCASH_ADDRESS_MAX_LENGTH = 320; // Zcash Unified Addresses (u1...) are typically 213+ characters
 const FALLBACK_AVATAR_URL = "/bitfoot-heads/bitfoot-head-01.png";
 
 function sanitizeUsername(value: unknown): string {

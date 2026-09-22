@@ -102,4 +102,27 @@ describe("POST /api/profile", () => {
     expect(res.status).toBe(200);
     expect(upsertedRecords()[0].x_avatar_url).toBe("https://pbs.twimg.com/profile_images/1/avatar.jpg");
   });
+
+  it("persists isCustomAvatar flag when explicitly provided", async () => {
+    const res = await syncProfile({
+      userId: "a0000000-0000-4000-8000-000000000011",
+      avatarUrl: "/bitfoot-heads/bitfoot-head-09.png",
+      isCustomAvatar: true,
+    });
+
+    expect(res.status).toBe(200);
+    expect(upsertedRecords()[0].x_avatar_url).toBe("/bitfoot-heads/bitfoot-head-09.png");
+    expect(upsertedRecords()[0].is_custom_avatar).toBe(true);
+  });
+
+  it("persists a valid Zcash Unified Address of standard length (~213 chars)", async () => {
+    const validUA = "u1" + "a".repeat(211); // Standard 213-char Unified Address
+    const res = await syncProfile({
+      userId: "a0000000-0000-4000-8000-000000000012",
+      zcashAddress: validUA,
+    });
+
+    expect(res.status).toBe(200);
+    expect(upsertedRecords()[0].zcash_address).toBe(validUA);
+  });
 });

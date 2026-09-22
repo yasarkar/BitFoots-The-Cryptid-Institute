@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   x_username TEXT NOT NULL,
   x_avatar_url TEXT,
+  is_custom_avatar BOOLEAN DEFAULT false,
   zcash_address TEXT,
   is_guest BOOLEAN DEFAULT false,
   unlocked_sectors INTEGER[] DEFAULT '{1}'::INTEGER[],
@@ -35,6 +36,13 @@ BEGIN
     WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'highest_score'
   ) THEN
     ALTER TABLE public.profiles ADD COLUMN highest_score INTEGER DEFAULT 0;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'is_custom_avatar'
+  ) THEN
+    ALTER TABLE public.profiles ADD COLUMN is_custom_avatar BOOLEAN DEFAULT false;
   END IF;
 
   IF NOT EXISTS (
@@ -149,28 +157,104 @@ CREATE POLICY "Allow public read for chapter_scores"
 -- 6. Trigger to automatically sync Supabase Auth users to public.profiles upon X (Twitter) or Google OAuth signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+  v_x_avatar TEXT;
+  v_google_avatar TEXT;
+  v_chosen_avatar TEXT;
+  v_x_username TEXT;
 BEGIN
-  INSERT INTO public.profiles (id, x_username, x_avatar_url, is_guest, unlocked_sectors)
-  VALUES (
-    NEW.id,
+  -- Look for X (Twitter) avatar in auth.identities
+  SELECT
     COALESCE(
+      identity_data->>'avatar_url',
+      identity_data->>'profile_image_url_https',
+      identity_data->>'picture'
+    )
+  INTO v_x_avatar
+  FROM auth.identities
+  WHERE user_id = NEW.id AND provider IN ('twitter', 'x')
+  ORDER BY updated_at DESC NULLS LAST
+  LIMIT 1;
+
+  -- Fallback check in raw_user_meta_data if metadata came from X
+  IF v_x_avatar IS NULL THEN
+    IF (NEW.raw_user_meta_data->>'avatar_url') LIKE '%twimg.com%' THEN
+      v_x_avatar := NEW.raw_user_meta_data->>'avatar_url';
+    END IF;
+  END IF;
+
+  -- Look for Google avatar in auth.identities
+  SELECT
+    COALESCE(
+      identity_data->>'avatar_url',
+      identity_data->>'picture'
+    )
+  INTO v_google_avatar
+  FROM auth.identities
+  WHERE user_id = NEW.id AND provider = 'google'
+  ORDER BY updated_at DESC NULLS LAST
+  LIMIT 1;
+
+  -- Fallback check in raw_user_meta_data if metadata came from Google
+  IF v_google_avatar IS NULL THEN
+    IF (NEW.raw_user_meta_data->>'avatar_url') LIKE '%googleusercontent.com%' OR (NEW.raw_user_meta_data->>'picture') LIKE '%googleusercontent.com%' THEN
+      v_google_avatar := COALESCE(NEW.raw_user_meta_data->>'picture', NEW.raw_user_meta_data->>'avatar_url');
+    END IF;
+  END IF;
+
+  -- Priority rule:
+  -- If X is connected, prefer X avatar.
+  -- Else if Google is connected, prefer Google avatar.
+  -- Otherwise, fallback to raw_user_meta_data avatar or dicebear/default.
+  v_chosen_avatar := COALESCE(
+    v_x_avatar,
+    v_google_avatar,
+    NEW.raw_user_meta_data->>'avatar_url',
+    NEW.raw_user_meta_data->>'picture',
+    'https://api.dicebear.com/7.x/bottts/svg?seed=' || NEW.id::text
+  );
+
+  -- Extract best username (prefer X handle)
+  SELECT identity_data->>'user_name'
+  INTO v_x_username
+  FROM auth.identities
+  WHERE user_id = NEW.id AND provider IN ('twitter', 'x')
+  LIMIT 1;
+
+  IF v_x_username IS NULL OR v_x_username = '' THEN
+    v_x_username := COALESCE(
       NEW.raw_user_meta_data->>'user_name',
+      NEW.raw_user_meta_data->>'preferred_username',
       NEW.raw_user_meta_data->>'full_name',
       NEW.raw_user_meta_data->>'name',
       'Hunter_' || SUBSTRING(NEW.id::text FROM 1 FOR 6)
-    ),
-    COALESCE(
-      NEW.raw_user_meta_data->>'avatar_url',
-      NEW.raw_user_meta_data->>'picture',
-      'https://api.dicebear.com/7.x/bottts/svg?seed=' || NEW.id::text
-    ),
+    );
+  END IF;
+
+  INSERT INTO public.profiles (id, x_username, x_avatar_url, is_custom_avatar, is_guest, unlocked_sectors)
+  VALUES (
+    NEW.id,
+    v_x_username,
+    v_chosen_avatar,
+    false,
     false,
     '{1}'::INTEGER[]
   )
   ON CONFLICT (id) DO UPDATE
   SET
     x_username = COALESCE(NULLIF(public.profiles.x_username, ''), EXCLUDED.x_username),
-    x_avatar_url = COALESCE(NULLIF(public.profiles.x_avatar_url, ''), EXCLUDED.x_avatar_url),
+    -- If user set a custom avatar, KEEP IT!
+    -- Otherwise, if X avatar became available (e.g. linked later), upgrade to X avatar!
+    -- Otherwise, if profile already has an avatar (e.g. Google), keep it; else use chosen avatar!
+    x_avatar_url = CASE
+      WHEN public.profiles.is_custom_avatar = true AND public.profiles.x_avatar_url IS NOT NULL AND public.profiles.x_avatar_url <> ''
+        THEN public.profiles.x_avatar_url
+      WHEN v_x_avatar IS NOT NULL AND v_x_avatar <> ''
+        THEN v_x_avatar
+      WHEN public.profiles.x_avatar_url IS NOT NULL AND public.profiles.x_avatar_url <> ''
+        THEN public.profiles.x_avatar_url
+      ELSE EXCLUDED.x_avatar_url
+    END,
     is_guest = false,
     updated_at = now();
   RETURN NEW;
