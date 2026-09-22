@@ -7,9 +7,7 @@ import { Sector3Scene } from "./scenes/Sector3Scene";
  * Creates the Phaser 3 Game Configuration object
  * Mounts the 3 Sector Scenes (Canopy, 90° Lattice, and Shielded ZK Final)
  */
-export const createGameConfig = (
-  parentElement: HTMLElement
-): Phaser.Types.Core.GameConfig => {
+export const createGameConfig = (parentElement: HTMLElement): Phaser.Types.Core.GameConfig => {
   return {
     type: Phaser.AUTO,
     parent: parentElement,

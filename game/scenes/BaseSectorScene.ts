@@ -7,6 +7,7 @@ import {
   AvatarChangedPayload,
 } from "@/lib/eventBus";
 import { SECTORS, SectorConfig } from "@/game/config/sectors";
+import { generateUuid, isValidUuid } from "@/lib/uuid";
 
 export abstract class BaseSectorScene extends Phaser.Scene {
   public abstract readonly sectorId: 1 | 2 | 3;
@@ -32,6 +33,10 @@ export abstract class BaseSectorScene extends Phaser.Scene {
   protected startTime: number = 0;
   protected gateActivated: boolean = false;
   protected isGameOver: boolean = false;
+
+  // SEC-4: single-use, server-issued run verification token
+  protected runToken: string | null = null;
+  private runTokenRequest: Promise<void> | null = null;
 
   // Optional Lantern / Dark Mask
   protected darknessLayer?: Phaser.GameObjects.RenderTexture;
@@ -65,6 +70,7 @@ export abstract class BaseSectorScene extends Phaser.Scene {
     this.gateActivated = false;
     this.isGameOver = false;
     this.startTime = Date.now();
+    this.requestRunToken();
     if (this.autoStartOnCreate) {
       this.isExpeditionActive = true;
       this.physics.resume();
@@ -97,6 +103,7 @@ export abstract class BaseSectorScene extends Phaser.Scene {
       this.isExpeditionActive = true;
       this.physics.resume();
       this.startTime = Date.now();
+      this.requestRunToken();
     };
 
     this.onResumeGameHandler = () => {
@@ -107,7 +114,6 @@ export abstract class BaseSectorScene extends Phaser.Scene {
       const autoStart = data?.autoStart ?? true;
       this.scene.restart({ autoStart });
     };
-
 
     this.onSwitchChapterHandler = (data: SwitchChapterPayload) => {
       const autoStart = data?.autoStart ?? false;
@@ -185,13 +191,7 @@ export abstract class BaseSectorScene extends Phaser.Scene {
     if (this.health <= 0) {
       this.triggerGameOver(reason);
     } else if (this.player) {
-      this.showFloatingText(
-        this.player.x,
-        this.player.y - 18,
-        `-1 HP [${reason}]`,
-        "#ef4444",
-        "#450a0a"
-      );
+      this.showFloatingText(this.player.x, this.player.y - 18, `-1 HP [${reason}]`, "#ef4444", "#450a0a");
     }
   }
 
@@ -293,6 +293,39 @@ export abstract class BaseSectorScene extends Phaser.Scene {
   }
 
   /**
+   * SEC-4: Requests a single-use run token from the backend.
+   *
+   * The completion route derives the authoritative run duration from the
+   * server-side issue timestamp, so client clock manipulation or a fabricated
+   * `startTime` can no longer produce a "fast" clearance.
+   */
+  protected requestRunToken() {
+    this.runToken = null;
+
+    this.runTokenRequest = (async () => {
+      try {
+        const res = await fetch("/api/chapter/start", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chapterId: this.sectorId }),
+        });
+
+        if (!res.ok) {
+          console.warn("Run token request rejected with status", res.status);
+          return;
+        }
+
+        const data = await res.json();
+        if (typeof data?.runToken === "string") {
+          this.runToken = data.runToken;
+        }
+      } catch (err) {
+        console.warn("Could not obtain a run verification token:", err);
+      }
+    })();
+  }
+
+  /**
    * Post Telemetry to Backend Verification API
    */
   protected async handleAnswerSubmission(data: AnswerSubmittedPayload) {
@@ -304,17 +337,8 @@ export abstract class BaseSectorScene extends Phaser.Scene {
     } catch {}
 
     let validUserId = sessionProfile?.userId;
-    if (
-      !validUserId ||
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-        validUserId
-      )
-    ) {
-      validUserId = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-        const r = (Math.random() * 16) | 0;
-        const v = c === "x" ? r : (r & 0x3) | 0x8;
-        return v.toString(16);
-      });
+    if (!validUserId || !isValidUuid(validUserId || "")) {
+      validUserId = generateUuid();
 
       // Save generated guest ID to localStorage so future runs and leaderboard queries match
       sessionProfile = {
@@ -328,6 +352,11 @@ export abstract class BaseSectorScene extends Phaser.Scene {
       } catch {}
     }
 
+    // SEC-4: ensure the server-issued run token is available before submitting.
+    if (this.runTokenRequest) {
+      await this.runTokenRequest;
+    }
+
     try {
       const res = await fetch("/api/chapter/complete", {
         method: "POST",
@@ -339,8 +368,10 @@ export abstract class BaseSectorScene extends Phaser.Scene {
           avatarUrl: sessionProfile?.avatarUrl,
           zcashAddress: sessionProfile?.zcashAddress,
           isGuest: sessionProfile?.isGuest ?? true,
+          // Deprecated: the server measures the duration from the run token (SEC-4).
           startTime: this.startTime,
           endTime,
+          runToken: this.runToken ?? undefined,
           collectedIds: this.collectedIds,
           foundSecretSilhouette: (this as any).foundSecretSilhouette ?? false,
           gateAnswerIndex: data.selectedOptionIndex,
@@ -525,13 +556,7 @@ export abstract class BaseSectorScene extends Phaser.Scene {
       const img = new Image();
       img.crossOrigin = "anonymous";
       img.onload = () => {
-        this.drawAvatarCanvas(
-          img,
-          textureKey,
-          canvasWidth,
-          canvasHeight,
-          avatarUrl.includes("bitfoot-head")
-        );
+        this.drawAvatarCanvas(img, textureKey, canvasWidth, canvasHeight, avatarUrl.includes("bitfoot-head"));
         applyTextureToPlayer();
       };
       img.onerror = () => {

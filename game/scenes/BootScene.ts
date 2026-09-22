@@ -51,7 +51,7 @@ export class BootScene extends Phaser.Scene {
 
     // 2. Spawn Exit Gate (Harita sonu tetikleyicisi)
     this.exitGate = this.physics.add.staticSprite(430, 160, "exit_gate");
-    
+
     // Pulse animation on the gate
     this.tweens.add({
       targets: this.exitGate,
@@ -212,15 +212,12 @@ export class BootScene extends Phaser.Scene {
 
     const payload: LoreModalPayload = {
       id: "lore-chapter-1",
-      question: "According to Bitfoot lore, on which historic block was the first mysterious footprint discovered?",
-      options: [
-        "Genesis Block #0",
-        "Halving Block #210,000",
-        "The SegWit Block",
-        "Ethereum Block #1"
-      ],
+      question:
+        "According to Bitfoot lore, on which historic block was the first mysterious footprint discovered?",
+      options: ["Genesis Block #0", "Halving Block #210,000", "The SegWit Block", "Ethereum Block #1"],
       correctAnswerIndex: 0,
-      loreFact: "Legend holds that Bitfoot is an ancient cryptid guardian tracking the very first traces left by Satoshi.",
+      loreFact:
+        "Legend holds that Bitfoot is an ancient cryptid guardian tracking the very first traces left by Satoshi.",
     };
 
     // Emit to React UI to open the Lore Modal
@@ -232,7 +229,7 @@ export class BootScene extends Phaser.Scene {
       if (data.isCorrect) {
         this.score += 50;
       }
-      
+
       const timeElapsedSeconds = Math.floor((this.time.now - this.startTime) / 1000);
       const chapterFinishedData: ChapterFinishedPayload = {
         success: true,

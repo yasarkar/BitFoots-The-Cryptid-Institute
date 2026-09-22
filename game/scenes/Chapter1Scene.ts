@@ -1,10 +1,6 @@
 import * as Phaser from "phaser";
 import { BaseSectorScene } from "./BaseSectorScene";
-import {
-  gameEventBus,
-  FootprintCollectedPayload,
-  SecretDiscoveredPayload,
-} from "@/lib/eventBus";
+import { gameEventBus, FootprintCollectedPayload, SecretDiscoveredPayload } from "@/lib/eventBus";
 
 export class Chapter1Scene extends BaseSectorScene {
   public readonly sectorId = 1;
@@ -153,13 +149,7 @@ export class Chapter1Scene extends BaseSectorScene {
       this
     );
 
-    this.physics.add.overlap(
-      this.player,
-      this.ancientMonolithGate,
-      this.openGateModal,
-      undefined,
-      this
-    );
+    this.physics.add.overlap(this.player, this.ancientMonolithGate, this.openGateModal, undefined, this);
 
     // 11. Decaying Footprints Periodic Wind Event
     this.decayTimer = this.time.addEvent({
@@ -260,10 +250,7 @@ export class Chapter1Scene extends BaseSectorScene {
     this.fogMaskGraphics.fillCircle(screenPlayerX, screenPlayerY, this.lanternRadius * 0.6);
   }
 
-  private handleCollectFootprint(
-    _p: Phaser.GameObjects.GameObject,
-    fpObj: Phaser.GameObjects.GameObject
-  ) {
+  private handleCollectFootprint(_p: Phaser.GameObjects.GameObject, fpObj: Phaser.GameObjects.GameObject) {
     const footprint = fpObj as Phaser.Physics.Arcade.Sprite;
     const footprintId = footprint.getData("id") as string;
 
@@ -299,10 +286,7 @@ export class Chapter1Scene extends BaseSectorScene {
     this.player.setVelocity(0, 0);
   }
 
-  private handleDiscoverSilhouette(
-    _p: Phaser.GameObjects.GameObject,
-    silObj: Phaser.GameObjects.GameObject
-  ) {
+  private handleDiscoverSilhouette(_p: Phaser.GameObjects.GameObject, silObj: Phaser.GameObjects.GameObject) {
     if (this.foundSecretSilhouette) return;
     this.foundSecretSilhouette = true;
 
@@ -317,7 +301,13 @@ export class Chapter1Scene extends BaseSectorScene {
     });
 
     this.score += 50;
-    this.showFloatingText(this.player.x, this.player.y - 22, "+50 PTS // CRYPTID SPOTTED!", "#38bdf8", "#0369a1");
+    this.showFloatingText(
+      this.player.x,
+      this.player.y - 22,
+      "+50 PTS // CRYPTID SPOTTED!",
+      "#38bdf8",
+      "#0369a1"
+    );
 
     const payload: SecretDiscoveredPayload = {
       id: "secret_silhouette",

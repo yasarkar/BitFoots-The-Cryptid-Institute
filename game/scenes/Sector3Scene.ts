@@ -1,9 +1,6 @@
 import * as Phaser from "phaser";
 import { BaseSectorScene } from "./BaseSectorScene";
-import {
-  gameEventBus,
-  FootprintCollectedPayload,
-} from "@/lib/eventBus";
+import { gameEventBus, FootprintCollectedPayload } from "@/lib/eventBus";
 
 interface ShadowStalker {
   sprite: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
@@ -116,13 +113,7 @@ export class Sector3Scene extends BaseSectorScene {
       this
     );
 
-    this.physics.add.overlap(
-      this.player,
-      this.exitGate,
-      this.openGateModal,
-      undefined,
-      this
-    );
+    this.physics.add.overlap(this.player, this.exitGate, this.openGateModal, undefined, this);
 
     // Touch button listener from React
     this.onTriggerSonarHandler = () => this.fireSonarPing();
@@ -266,8 +257,9 @@ export class Sector3Scene extends BaseSectorScene {
       return;
     }
 
-    const activeFootprints = (this.footprintsGroup.getChildren() as Phaser.Physics.Arcade.Sprite[])
-      .filter((fp) => fp && fp.active);
+    const activeFootprints = (this.footprintsGroup.getChildren() as Phaser.Physics.Arcade.Sprite[]).filter(
+      (fp) => fp && fp.active
+    );
 
     if (activeFootprints.length === 0) return;
 
@@ -432,10 +424,7 @@ export class Sector3Scene extends BaseSectorScene {
     this.darkOverlayGraphics.fillCircle(this.player.x, this.player.y, 20);
   }
 
-  private handleCollectFootprint(
-    _p: Phaser.GameObjects.GameObject,
-    fpObj: Phaser.GameObjects.GameObject
-  ) {
+  private handleCollectFootprint(_p: Phaser.GameObjects.GameObject, fpObj: Phaser.GameObjects.GameObject) {
     const footprint = fpObj as Phaser.Physics.Arcade.Sprite;
     const footprintId = footprint.getData("id") as string;
 

@@ -42,10 +42,12 @@ export const SECTORS: Record<number, SectorConfig> = {
     shortSubTitle: "CANOPY",
     clearance: "OPEN",
     requiredPreviousSector: null,
-    description: "Dense pine perimeter under rolling nocturnal mist. The cryptid herd leaves its earliest organic footprints here.",
+    description:
+      "Dense pine perimeter under rolling nocturnal mist. The cryptid herd leaves its earliest organic footprints here.",
     difficultyRating: "RECON",
     mechanicTitle: "Decaying Traces & Lantern Cone",
-    mechanicDescription: "Navigate rolling fog with your lantern cone. Traces decay and blow away with the wind if neglected.",
+    mechanicDescription:
+      "Navigate rolling fog with your lantern cone. Traces decay and blow away with the wind if neglected.",
     coordinates: "47°12'N 122°14'W",
     tracesRequired: 8,
     timeLimitSeconds: 120,
@@ -72,10 +74,12 @@ export const SECTORS: Record<number, SectorConfig> = {
     shortSubTitle: "90° GRID",
     clearance: "ACTIVE",
     requiredPreviousSector: 1,
-    description: "Shilo's geometric proving grounds. Orthogonal crystalline corridors where natural curvature is strictly forbidden.",
+    description:
+      "Shilo's geometric proving grounds. Orthogonal crystalline corridors where natural curvature is strictly forbidden.",
     difficultyRating: "ELEVATED",
     mechanicTitle: "Orthogonal Lock & Collapsing Grid",
-    mechanicDescription: "Zero diagonal movement. Stepped tiles crumble into the void after 1.4 seconds. Beware of pulsing glitch lasers.",
+    mechanicDescription:
+      "Zero diagonal movement. Stepped tiles crumble into the void after 1.4 seconds. Beware of pulsing glitch lasers.",
     coordinates: "48°05'N 121°44'W",
     tracesRequired: 6,
     timeLimitSeconds: 100,
@@ -90,7 +94,8 @@ export const SECTORS: Record<number, SectorConfig> = {
         "Metallic 3D polygon bump-mapping",
       ],
       correctAnswerIndex: 1,
-      loreFact: "Each Bitfoot is meticulously hand-crafted with strict 90-degree orthogonal geometry and color stacking.",
+      loreFact:
+        "Each Bitfoot is meticulously hand-crafted with strict 90-degree orthogonal geometry and color stacking.",
     },
   },
   3: {
@@ -102,10 +107,12 @@ export const SECTORS: Record<number, SectorConfig> = {
     shortSubTitle: "FINAL ZK",
     clearance: "MYTHIC",
     requiredPreviousSector: 2,
-    description: "The zero-knowledge privacy abyss and final proving grounds. Complete the acoustic echolocation trials and decrypt the terminal gate to conquer the expedition.",
+    description:
+      "The zero-knowledge privacy abyss and final proving grounds. Complete the acoustic echolocation trials and decrypt the terminal gate to conquer the expedition.",
     difficultyRating: "APEX",
     mechanicTitle: "Acoustic Sonar & Quantum Shift",
-    mechanicDescription: "Near zero natural vision. Press [SPACE] to fire a sonar ping. Beware: sound-hunting shadow stalkers sprint toward echoes, and unobserved traces drift!",
+    mechanicDescription:
+      "Near zero natural vision. Press [SPACE] to fire a sonar ping. Beware: sound-hunting shadow stalkers sprint toward echoes, and unobserved traces drift!",
     coordinates: "ZK-STARK // 0x546b",
     tracesRequired: 6,
     timeLimitSeconds: 90,
@@ -120,7 +127,8 @@ export const SECTORS: Record<number, SectorConfig> = {
         "Centralized KYC signature attestations",
       ],
       correctAnswerIndex: 1,
-      loreFact: "Zero-knowledge proofs permit mathematical verification of integrity with absolute concealment of trace history.",
+      loreFact:
+        "Zero-knowledge proofs permit mathematical verification of integrity with absolute concealment of trace history.",
     },
   },
 };
