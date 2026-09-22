@@ -1,0 +1,12 @@
+{
+  "extends": ["next/core-web-vitals"],
+  "plugins": ["unused-imports"],
+  "rules": {
+    "unused-imports/no-unused-imports": "error",
+    "no-empty": ["error", { "allowEmptyCatch": true }],
+    "no-console": "off",
+    "react/no-unescaped-entities": "off",
+    "@next/next/no-img-element": "off"
+  },
+  "ignorePatterns": ["node_modules/", ".next/", "out/", "next-env.d.ts"]
+}

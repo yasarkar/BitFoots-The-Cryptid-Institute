@@ -4,11 +4,12 @@ Bu rehber, **BitFoots** ekosistemine ait görsel dilin, tasarım felsefesinin, r
 
 ---
 
-## 1. Tasarım Felsefesi: *Forest Noir & Cryptid Expedition*
+## 1. Tasarım Felsefesi: _Forest Noir & Cryptid Expedition_
 
 BitFoots görsel dili; Web3'ün soğuk ve mekanik çizgilerini, **19. yüzyıl doğa bilimcilerinin saha defterleri**, **mitolojik orman keşifleri** ve **retro piksel estetiği** ile harmanlar.
 
 ### Temel Tasarım İlkeleri:
+
 1. **Yaşayan Atmosfer (Living World UI):** Arayüz durağan bir kutu değildir. Arka planda orman nefes alır; ağaçlar rüzgarla hafifçe salınır, sis yatayda süzülür ve karanlığın içinden ara sıra altın gözler parıldayıp göz kırpar.
 2. **Karanlıkta Yanan Fener (High-Contrast Lighting):** Koyu ve soğuk kömür tonlarının (`#14171c`) ortasında, fener ışığı veya altın madeni etkisi yaratan sıcak kehribar altın (`#eaba49`) ve parşömen şeftalisi (`#ffddcc`) kullanılır.
 3. **Akademik & Gizemli Editoryal Dil:** Klişe sans-serif fontlar yerine editoryal serif (`IBM Plex Serif`) ile askeri/terminal disiplini (`Monospace` + `Uppercase` + `wide letter-spacing`) bir arada kullanılır.
@@ -23,26 +24,26 @@ Tüm renkler ve kontrast değerleri CSS değişkenleri (`:root`) üzerinden yön
 ```css
 :root {
   /* Zemin ve Yüzeyler */
-  --bg: #14171c;          /* Derin Gece / Abis Kömürü - Sayfa zemin rengi */
-  --panel: #1a1f26;       /* Kart ve panel zemin rengi */
-  --field: #0f1216;       /* Girdi alanları ve çukur zeminler */
+  --bg: #14171c; /* Derin Gece / Abis Kömürü - Sayfa zemin rengi */
+  --panel: #1a1f26; /* Kart ve panel zemin rengi */
+  --field: #0f1216; /* Girdi alanları ve çukur zeminler */
   --overlay: rgb(11 13 17 / 0.8); /* Yarı saydam kart dolgusu */
 
   /* Vurgular ve Işık */
-  --gold: #eaba49;        /* İmza Antik Altın - Kenarlıklar, ikonlar, butonlar */
-  --gold-hover: #f3c85f;  /* Etkileşim anında parlayan parlak kehribar sarısı */
-  --heading: #ffddcc;     /* Sıcak Parşömen / Şeftali - Gaz lambası ışığı hissi */
+  --gold: #eaba49; /* İmza Antik Altın - Kenarlıklar, ikonlar, butonlar */
+  --gold-hover: #f3c85f; /* Etkileşim anında parlayan parlak kehribar sarısı */
+  --heading: #ffddcc; /* Sıcak Parşömen / Şeftali - Gaz lambası ışığı hissi */
 
   /* Metin ve Kontur */
-  --text: #aab6c9;        /* Sis Grisi - Okunaklı ve göz yormayan gövde metni */
-  --lead-text: #c9ccd2;   /* Vurgulu ara metin rengi */
-  --muted: #7d8898;       /* Grafit Grisi - Tarih, alt bilgi ve pasif detaylar */
-  --line: #3a475c;        /* Soğuk Kurşun - Ayrım ve sınır çizgileri */
+  --text: #aab6c9; /* Sis Grisi - Okunaklı ve göz yormayan gövde metni */
+  --lead-text: #c9ccd2; /* Vurgulu ara metin rengi */
+  --muted: #7d8898; /* Grafit Grisi - Tarih, alt bilgi ve pasif detaylar */
+  --line: #3a475c; /* Soğuk Kurşun - Ayrım ve sınır çizgileri */
 
   /* Durum Göstergeleri */
-  --ok: #7fc98f;          /* Başarılı / Kabul Edildi - Orman yeşili */
-  --bad: #e07a6b;         /* Hata / Reddedildi - Terracotta kırmızısı */
-  --unk: #d8c27a;         /* Beklemede / Bilinmeyen - Hardal altın */
+  --ok: #7fc98f; /* Başarılı / Kabul Edildi - Orman yeşili */
+  --bad: #e07a6b; /* Hata / Reddedildi - Terracotta kırmızısı */
+  --unk: #d8c27a; /* Beklemede / Bilinmeyen - Hardal altın */
 }
 ```
 
@@ -50,14 +51,14 @@ Tüm renkler ve kontrast değerleri CSS değişkenleri (`:root`) üzerinden yön
 
 ## 3. Tipografi Hiyerarşisi
 
-| Rol | Font Ailesi | Boyut & Ağırlık | Harf Aralığı / Kasa | Kullanım Alanı |
-| :--- | :--- | :--- | :--- | :--- |
-| **H1 (Ana Başlık)** | `IBM Plex Serif`, serif | 27px - 32px / 500 | Normal | *"Good luck, hunter."* |
-| **Eyebrow (Üst Başlık)** | Sistem / Monospace | 13px / 600 | `0.22em` / `UPPERCASE` | `APPLICATION RECEIVED` |
-| **Lead (Açıklama)** | `IBM Plex Serif` veya Sans | 16px / 400 | Normal | Kart içi ana bilgilendirme metni |
-| **Status Chip** | Sistem Sans / Mono | 14px / 400 (Kalın: 700) | `0.06em` | `Status: PENDING` |
-| **Buttons (Aksiyonlar)**| Sistem / Monospace | 12px / 600 | `0.18em` / `UPPERCASE` | `POST ON X`, `COPY IMAGE` |
-| **Muted (Zaman/Detay)** | Sistem Sans | 14px / 400 | Normal | `Sent 2026-09-18 13:09 UTC.` |
+| Rol                      | Font Ailesi                | Boyut & Ağırlık         | Harf Aralığı / Kasa    | Kullanım Alanı                   |
+| :----------------------- | :------------------------- | :---------------------- | :--------------------- | :------------------------------- |
+| **H1 (Ana Başlık)**      | `IBM Plex Serif`, serif    | 27px - 32px / 500       | Normal                 | _"Good luck, hunter."_           |
+| **Eyebrow (Üst Başlık)** | Sistem / Monospace         | 13px / 600              | `0.22em` / `UPPERCASE` | `APPLICATION RECEIVED`           |
+| **Lead (Açıklama)**      | `IBM Plex Serif` veya Sans | 16px / 400              | Normal                 | Kart içi ana bilgilendirme metni |
+| **Status Chip**          | Sistem Sans / Mono         | 14px / 400 (Kalın: 700) | `0.06em`               | `Status: PENDING`                |
+| **Buttons (Aksiyonlar)** | Sistem / Monospace         | 12px / 600              | `0.18em` / `UPPERCASE` | `POST ON X`, `COPY IMAGE`        |
+| **Muted (Zaman/Detay)**  | Sistem Sans                | 14px / 400              | Normal                 | `Sent 2026-09-18 13:09 UTC.`     |
 
 ---
 
@@ -66,7 +67,9 @@ Tüm renkler ve kontrast değerleri CSS değişkenleri (`:root`) üzerinden yön
 BitFoots atmosferi arkada 5 bağımsız katmandan oluşur. Arka plan bileşeni `position: fixed; inset: 0; pointer-events: none;` olarak kurgulanmalıdır.
 
 ### Katman Hiyerarşisi:
+
 1. **`.world__trees` (Ağaç Katmanları):**
+
    ```css
    .world__trees {
      position: absolute;
@@ -80,22 +83,30 @@ BitFoots atmosferi arkada 5 bağımsız katmandan oluşur. Arka plan bileşeni `
      animation: fw-sway calc(9s - var(--z) * 1.2s) ease-in-out infinite alternate;
    }
    @keyframes fw-sway {
-     from { transform: skewX(calc(var(--z) * -0.22deg)); }
-     to   { transform: skewX(calc(var(--z) * 0.22deg)); }
+     from {
+       transform: skewX(calc(var(--z) * -0.22deg));
+     }
+     to {
+       transform: skewX(calc(var(--z) * 0.22deg));
+     }
    }
    ```
 
 2. **`.world__fog` (Çift Katmanlı Sis):**
    - **Arka Sis:** `animation: fw-drift 80s linear infinite;`
    - **Ön Sis (`.world__fog--near`):** `animation: fw-drift 55s linear infinite reverse;`
+
    ```css
    @keyframes fw-drift {
-     to { transform: translateX(-50%); }
+     to {
+       transform: translateX(-50%);
+     }
    }
    ```
 
 3. **`.world__eyes` (Ormanda Gizlenen Canlılar):**
    - Rastgele konumlarda (`--x`, `--y`) beliren altın renkli göz çiftleri.
+
    ```css
    .world .eye-pair {
      position: absolute;
@@ -105,16 +116,30 @@ BitFoots atmosferi arkada 5 bağımsız katmandan oluşur. Arka plan bileşeni `
      gap: calc(var(--s) * 0.1333);
      opacity: 0;
      filter: drop-shadow(0 0 calc(var(--s) * 0.6) rgb(234 186 73 / 0.45));
-     animation: fw-lurk var(--lt) ease-in-out var(--ld) infinite,
-                fw-blink var(--bt) var(--bd) infinite;
+     animation:
+       fw-lurk var(--lt) ease-in-out var(--ld) infinite,
+       fw-blink var(--bt) var(--bd) infinite;
    }
    @keyframes fw-lurk {
-     0%, 70%, 100% { opacity: 0; }
-     12%, 58%      { opacity: 1; }
+     0%,
+     70%,
+     100% {
+       opacity: 0;
+     }
+     12%,
+     58% {
+       opacity: 1;
+     }
    }
    @keyframes fw-blink {
-     0%, 93%, 100% { transform: scaleY(1); }
-     95.5%         { transform: scaleY(0.08); }
+     0%,
+     93%,
+     100% {
+       transform: scaleY(1);
+     }
+     95.5% {
+       transform: scaleY(0.08);
+     }
    }
    ```
 
@@ -129,6 +154,7 @@ BitFoots atmosferi arkada 5 bağımsız katmandan oluşur. Arka plan bileşeni `
 ## 5. UI Bileşen Standartları (Component Specs)
 
 ### 1. Kart Konteyneri (`main.narrow`)
+
 ```css
 main.narrow {
   max-width: 768px;
@@ -139,13 +165,14 @@ main.narrow {
   border: 1px solid rgb(234 186 73 / 0.85);
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
-  box-shadow: 
+  box-shadow:
     0 30px 120px rgb(0 0 0 / 0.65),
     0 -24px 100px rgb(185 200 235 / 0.07);
 }
 ```
 
 ### 2. Durum Rozeti (`.chip--solid`)
+
 ```css
 .chip--solid {
   display: inline-block;
@@ -162,6 +189,7 @@ main.narrow {
 ```
 
 ### 3. Butonlar (`.btn` & `.btn--solid`)
+
 ```css
 .btn {
   display: inline-flex;
@@ -199,6 +227,7 @@ main.narrow {
 ```
 
 ### 4. Piksel Süsleme Rozeti (`.card__mark`)
+
 Kartın üst kısmında yer alan, merkezinde altın pikselli ayak izi ve yanlara degrade çizgilerle açılan ayırıcı rozet.
 
 ---
@@ -206,6 +235,7 @@ Kartın üst kısmında yer alan, merkezinde altın pikselli ayak izi ve yanlara
 ## 6. Yeni Sayfa & Modal Geliştirirken Kontrol Listesi (Checklist)
 
 Yeni bir arayüz veya modal geliştirirken şu kurallara dikkat edilmelidir:
+
 - [ ] Zemin rengi düz siyah değil, derin yeşil-mavi alt tonlu `#14171c` mi?
 - [ ] Kart kenarlıkları altın tonunda (`rgba(234, 186, 73, 0.85)`) mı?
 - [ ] Başlıklarda `IBM Plex Serif` kullanıldı mı?

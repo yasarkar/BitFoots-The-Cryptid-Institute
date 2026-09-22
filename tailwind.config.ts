@@ -26,22 +26,6 @@ const config: Config = {
           dark: "#080e17",
           forest: "#071410",
         },
-        tci: {
-          abyss: "#14171c",
-          panel: "#1a1f26",
-          card: "#1a1f26",
-          surface: "#0f1216",
-          border: "#3a475c",
-          borderLight: "#eaba49",
-          emerald: "#7fc98f",
-          mint: "#7fc98f",
-          shield: "#aab6c9",
-          indigo: "#eaba49",
-          gold: "#eaba49",
-          amber: "#f3c85f",
-          slate: "#aab6c9",
-          platinum: "#ffddcc",
-        },
       },
       fontFamily: {
         serif: ["var(--font-serif)", "'IBM Plex Serif'", "Georgia", "serif"],
@@ -54,7 +38,7 @@ const config: Config = {
         "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         "bounce-subtle": "bounce 2s infinite",
         "radar-sweep": "radar 4s linear infinite",
-        "scanline": "scanline 8s linear infinite",
+        scanline: "scanline 8s linear infinite",
         "glow-pulse": "glowPulse 2s ease-in-out infinite alternate",
       },
       keyframes: {
@@ -77,4 +61,3 @@ const config: Config = {
 };
 
 export default config;
-
