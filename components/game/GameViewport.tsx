@@ -14,10 +14,7 @@ interface GameViewportProps {
  * Houses the isolated Phaser 3 Canvas inside a React component lifecycle.
  * Prevents memory leaks by cleanly destroying the game instance on unmount.
  */
-export const GameViewport: React.FC<GameViewportProps> = ({
-  onGameReady,
-  className = "",
-}) => {
+export const GameViewport: React.FC<GameViewportProps> = ({ onGameReady, className = "" }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Phaser.Game | null>(null);
 
@@ -45,12 +42,12 @@ export const GameViewport: React.FC<GameViewportProps> = ({
 
   return (
     <div
-      className={`relative w-full h-full flex items-center justify-center overflow-hidden select-none ${className}`}
+      className={`relative flex h-full w-full select-none items-center justify-center overflow-hidden ${className}`}
     >
       <div
         ref={containerRef}
         id="phaser-game-container"
-        className="w-full h-full flex items-center justify-center shadow-2xl rounded-lg overflow-hidden border border-bitfoot-border/60 bg-black"
+        className="border-bitfoot-border/60 flex h-full w-full items-center justify-center overflow-hidden rounded-lg border bg-black shadow-2xl"
         style={{
           aspectRatio: "3 / 2",
           maxWidth: "100%",
