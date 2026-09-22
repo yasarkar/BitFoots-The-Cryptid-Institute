@@ -45,6 +45,16 @@ BEGIN
     ALTER TABLE public.profiles ADD COLUMN is_custom_avatar BOOLEAN DEFAULT false;
   END IF;
 
+  -- Hunter Zcash shielded (Unified) address. Missing this column made every
+  -- profile upsert from /api/profile fail entirely (PostgREST rejects the whole
+  -- statement on an unknown column), so saved addresses never reached the database.
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'zcash_address'
+  ) THEN
+    ALTER TABLE public.profiles ADD COLUMN zcash_address TEXT;
+  END IF;
+
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'updated_at'

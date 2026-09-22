@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { isValidUuid } from "./uuid";
+import { selectTolerantToSchema } from "./postgrest";
 
 export { isValidUuid };
 
@@ -23,36 +24,63 @@ export const supabase: SupabaseClient | null = isSupabaseConfigured
  * UUID helpers live in `lib/uuid.ts` (single shared implementation).
  */
 
+/** Columns the application expects on `public.profiles`. */
+const PROFILE_SELECT_COLUMNS = [
+  "id",
+  "x_username",
+  "x_avatar_url",
+  "is_custom_avatar",
+  "zcash_address",
+  "is_guest",
+  "unlocked_sectors",
+  "highest_score",
+];
+
+export interface HunterProfileRow {
+  id: string;
+  x_username: string | null;
+  x_avatar_url: string | null;
+  is_custom_avatar?: boolean | null;
+  zcash_address?: string | null;
+  is_guest?: boolean | null;
+  unlocked_sectors?: number[] | null;
+  highest_score?: number | null;
+}
+
 /**
- * Fetches user profile and progress directly from Supabase
+ * Fetches user profile and progress directly from Supabase.
+ *
+ * The lookup tolerates columns that exist in `supabase/schema.sql` but not yet in
+ * the live database: an outdated schema used to fail the whole query, which made
+ * already saved values (avatar, Zcash shielded address, ...) look like they were
+ * never stored.
  */
-export async function fetchHunterProfile(userId: string) {
-  if (!supabase || !isValidUuid(userId)) return null;
+export async function fetchHunterProfile(userId: string): Promise<HunterProfileRow | null> {
+  const client = supabase;
+  if (!client || !isValidUuid(userId)) return null;
 
   try {
-    let { data, error } = await supabase
-      .from("profiles")
-      .select(
-        "id, x_username, x_avatar_url, is_custom_avatar, zcash_address, is_guest, unlocked_sectors, highest_score"
-      )
-      .eq("id", userId)
-      .maybeSingle();
-
-    if (error && error.message?.includes("is_custom_avatar")) {
-      const fallback = await supabase
-        .from("profiles")
-        .select("id, x_username, x_avatar_url, zcash_address, is_guest, unlocked_sectors, highest_score")
-        .eq("id", userId)
-        .maybeSingle();
-      data = fallback.data ? { ...fallback.data, is_custom_avatar: false } : null;
-      error = fallback.error;
-    }
+    const { data, error, droppedColumns } = await selectTolerantToSchema<HunterProfileRow>(
+      PROFILE_SELECT_COLUMNS,
+      (columns) => client.from("profiles").select(columns.join(", ")).eq("id", userId).maybeSingle()
+    );
 
     if (error) {
       console.warn("Error fetching hunter profile from Supabase:", error.message);
       return null;
     }
-    return data;
+
+    if (!data) return null;
+
+    if (droppedColumns.length > 0) {
+      console.warn(
+        `Hunter profile lookup skipped columns missing from the live schema (${droppedColumns.join(
+          ", "
+        )}). Run supabase/schema.sql so the database matches the application code.`
+      );
+    }
+
+    return droppedColumns.includes("is_custom_avatar") ? { ...data, is_custom_avatar: false } : data;
   } catch (err) {
     console.error("fetchHunterProfile exception:", err);
     return null;
@@ -88,8 +116,18 @@ export async function syncHunterProfile(payload: HunterProfileSyncPayload): Prom
     });
 
     if (!res.ok) {
-      console.warn("Error syncing hunter profile:", res.status);
+      const failure = (await res.json().catch(() => null)) as { error?: string; details?: string } | null;
+      console.warn("Error syncing hunter profile:", res.status, failure?.error ?? "", failure?.details ?? "");
       return false;
+    }
+
+    const result = (await res.json().catch(() => null)) as { droppedColumns?: string[] } | null;
+    if (result?.droppedColumns?.length) {
+      console.warn(
+        `Profile sync skipped columns missing from the live schema (${result.droppedColumns.join(
+          ", "
+        )}). Run supabase/schema.sql so the database matches the application code.`
+      );
     }
 
     return true;

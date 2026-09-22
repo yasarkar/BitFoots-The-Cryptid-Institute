@@ -12,7 +12,6 @@ import {
   Link as LinkIcon,
   Coins,
   Download,
-  Sparkles,
   Palette,
   ChevronDown,
   ChevronUp,
@@ -51,6 +50,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   isOpen,
   onClose,
   profile,
+  isSupabaseConfigured,
   onUpdateProfile,
   onLoginWithGoogle,
   onLoginWithX,
@@ -74,55 +74,56 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const errorTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Fresh snapshots for the database sync, so it never has to re-run (and cancel
+  // itself) while the hunter is typing.
+  const profileRef = useRef(profile);
+  const onUpdateProfileRef = useRef(onUpdateProfile);
+  const zcashInputRef = useRef(zcashInput);
   useEffect(() => {
-    let isCancelled = false;
+    profileRef.current = profile;
+    onUpdateProfileRef.current = onUpdateProfile;
+    zcashInputRef.current = zcashInput;
+  });
 
-    if (isOpen) {
-      let initialZcash = profile.zcashAddress || "";
-      if (!initialZcash && typeof window !== "undefined") {
-        try {
-          const stored = localStorage.getItem("bitfoot_hunter_guest_session");
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            if (parsed?.zcashAddress) {
-              initialZcash = parsed.zcashAddress;
-            }
-          }
-        } catch {}
-      }
-      setUsernameInput(profile.username || "");
-      setAvatarUrlInput(profile.avatarUrl || "");
-      setIsCustomAvatarInput(Boolean(profile.isCustomAvatar));
-      setShowGallery(false);
-      setZcashInput(initialZcash);
-      if (initialZcash && !profile.zcashAddress) {
-        onUpdateProfile({ zcashAddress: initialZcash });
-      }
-      setSaveSuccess(false);
-      setErrorMsg(null);
-      setShowValidNotice(false);
-      setCopiedId(false);
-      setCopiedZec(false);
-      setLinkingAuth(null);
+  // The hunter whose persisted credentials were already loaded for this opening
+  const dbLoadedForRef = useRef<string>("");
 
-      // Veritabanından kayıtlı Zcash adresini çek ve input alanına yükle
-      if (profile.userId) {
-        fetchHunterProfile(profile.userId)
-          .then((dbData) => {
-            if (!isCancelled && dbData?.zcash_address) {
-              setZcashInput(dbData.zcash_address);
-              if (dbData.zcash_address !== profile.zcashAddress) {
-                onUpdateProfile({ zcashAddress: dbData.zcash_address });
-              }
-            }
-          })
-          .catch((err) => {
-            console.warn("Could not fetch Zcash address from database:", err);
-          });
-      }
+  // 1. Every opening starts from the locally known profile + guest session.
+  useEffect(() => {
+    if (!isOpen) {
+      dbLoadedForRef.current = "";
+      return;
     }
+
+    let initialZcash = profile.zcashAddress || "";
+    if (!initialZcash && typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("bitfoot_hunter_guest_session");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed?.zcashAddress) {
+            initialZcash = parsed.zcashAddress;
+          }
+        }
+      } catch {}
+    }
+
+    setUsernameInput(profile.username || "");
+    setAvatarUrlInput(profile.avatarUrl || "");
+    setIsCustomAvatarInput(Boolean(profile.isCustomAvatar));
+    setShowGallery(false);
+    setZcashInput(initialZcash);
+    if (initialZcash && !profile.zcashAddress) {
+      onUpdateProfile({ zcashAddress: initialZcash });
+    }
+    setSaveSuccess(false);
+    setErrorMsg(null);
+    setShowValidNotice(false);
+    setCopiedId(false);
+    setCopiedZec(false);
+    setLinkingAuth(null);
+
     return () => {
-      isCancelled = true;
       if (validTimerRef.current) {
         clearTimeout(validTimerRef.current);
         validTimerRef.current = null;
@@ -145,6 +146,47 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     profile.userId,
     onUpdateProfile,
   ]);
+
+  // 2. Load the saved Zcash shielded address from the database, once per opening.
+  //    Reading it in its own effect keeps a profile update (triggered by the
+  //    result itself) from cancelling the lookup before it lands.
+  useEffect(() => {
+    if (!isOpen || !isSupabaseConfigured || !profile.userId) return;
+    if (dbLoadedForRef.current === profile.userId) return;
+    dbLoadedForRef.current = profile.userId;
+
+    let disposed = false;
+
+    fetchHunterProfile(profile.userId)
+      .then((dbData) => {
+        if (disposed) return;
+
+        const storedAddress = (dbData?.zcash_address || "").trim();
+        if (storedAddress) {
+          // The database wins for credentials that were successfully persisted.
+          setZcashInput(storedAddress);
+          if (storedAddress !== (profileRef.current.zcashAddress || "").trim()) {
+            onUpdateProfileRef.current({ zcashAddress: storedAddress });
+          }
+          return;
+        }
+
+        // Self-heal: the local session holds an address the database never received
+        // (older saves were rejected wholesale by a stale live schema) -> push it back
+        // so it is persisted instead of being lost again.
+        const localAddress = (zcashInputRef.current || profileRef.current.zcashAddress || "").trim();
+        if (localAddress) {
+          onUpdateProfileRef.current({ zcashAddress: localAddress });
+        }
+      })
+      .catch((err) => {
+        console.warn("Could not fetch Zcash address from database:", err);
+      });
+
+    return () => {
+      disposed = true;
+    };
+  }, [isOpen, isSupabaseConfigured, profile.userId]);
 
   if (!isOpen) return null;
 
@@ -364,11 +406,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   (e.target as HTMLImageElement).src = `/bitfoot-heads/bitfoot-head-01.png`;
                 }}
               />
-              {isCustomAvatarInput && (
-                <span className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-[#eaba49] bg-black text-[#eaba49] shadow">
-                  <Sparkles className="h-3 w-3" />
-                </span>
-              )}
             </div>
 
             {/* Hunter Info & Avatar Seed Buttons */}

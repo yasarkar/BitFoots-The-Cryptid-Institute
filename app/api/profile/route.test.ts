@@ -4,6 +4,9 @@ import { POST } from "./route";
 
 const FALLBACK_AVATAR = "/bitfoot-heads/bitfoot-head-01.png";
 
+type UpsertError = { code: string; message: string } | null;
+type UpsertErrorFactory = (record: Record<string, unknown>) => UpsertError;
+
 vi.mock("@/lib/supabaseAdmin", () => {
   const upserts: Record<string, unknown>[] = [];
   (globalThis as unknown as { __profileUpserts: Record<string, unknown>[] }).__profileUpserts = upserts;
@@ -13,7 +16,9 @@ vi.mock("@/lib/supabaseAdmin", () => {
       from: () => ({
         upsert: async (record: Record<string, unknown>) => {
           upserts.push(record);
-          return { error: null };
+          const errorFactory = (globalThis as unknown as { __profileUpsertError: UpsertErrorFactory | null })
+            .__profileUpsertError;
+          return { error: errorFactory ? errorFactory(record) : null };
         },
       }),
     },
@@ -28,6 +33,12 @@ vi.mock("@/lib/supabaseAdmin", () => {
 
 function upsertedRecords(): Record<string, unknown>[] {
   return (globalThis as unknown as { __profileUpserts: Record<string, unknown>[] }).__profileUpserts;
+}
+
+/** Simulates a live database whose schema lags behind `supabase/schema.sql`. */
+function setUpsertErrorFactory(factory: UpsertErrorFactory | null) {
+  (globalThis as unknown as { __profileUpsertError: UpsertErrorFactory | null }).__profileUpsertError =
+    factory;
 }
 
 function syncProfile(payload: unknown, contentType: string | null = "application/json") {
@@ -45,6 +56,7 @@ function syncProfile(payload: unknown, contentType: string | null = "application
 
 beforeEach(() => {
   upsertedRecords().length = 0;
+  setUpsertErrorFactory(null);
 });
 
 describe("POST /api/profile", () => {
@@ -124,5 +136,70 @@ describe("POST /api/profile", () => {
 
     expect(res.status).toBe(200);
     expect(upsertedRecords()[0].zcash_address).toBe(validUA);
+  });
+
+  it("still stores the Zcash address when the live schema misses a column (schema drift)", async () => {
+    // Reproduces the live database that has no `is_custom_avatar` column yet.
+    setUpsertErrorFactory((record) =>
+      "is_custom_avatar" in record
+        ? { code: "42703", message: "column profiles.is_custom_avatar does not exist" }
+        : null
+    );
+
+    const validUA = "u1" + "b".repeat(211);
+    const res = await syncProfile({
+      userId: "a0000000-0000-4000-8000-000000000013",
+      username: "Shielded_Hunter",
+      zcashAddress: validUA,
+      isCustomAvatar: true,
+    });
+
+    const json = await res.json();
+    expect(res.status).toBe(200);
+    expect(json).toMatchObject({
+      success: true,
+      isLiveSupabase: true,
+      droppedColumns: ["is_custom_avatar"],
+    });
+
+    // First attempt is rejected, the retry drops the unknown column and keeps the address.
+    expect(upsertedRecords()).toHaveLength(2);
+    expect(upsertedRecords()[0].is_custom_avatar).toBe(true);
+    expect(upsertedRecords()[1].is_custom_avatar).toBeUndefined();
+    expect(upsertedRecords()[1].zcash_address).toBe(validUA);
+    expect(upsertedRecords()[1].x_username).toBe("Shielded_Hunter");
+  });
+
+  it("fails loudly when the live schema rejects every supplied profile column", async () => {
+    setUpsertErrorFactory((record) =>
+      "zcash_address" in record
+        ? { code: "42703", message: "column profiles.zcash_address does not exist" }
+        : null
+    );
+
+    const res = await syncProfile({
+      userId: "a0000000-0000-4000-8000-000000000014",
+      zcashAddress: "u1" + "c".repeat(211),
+    });
+
+    const json = await res.json();
+    expect(res.status).toBe(500);
+    expect(json.success).toBe(false);
+    expect(json.error).toMatch(/schema/i);
+    expect(json.error).toMatch(/zcash_address/);
+  });
+
+  it("reports a refused server key instead of hiding it behind a generic failure", async () => {
+    setUpsertErrorFactory(() => ({ code: "401", message: "Invalid API key" }));
+
+    const res = await syncProfile({
+      userId: "a0000000-0000-4000-8000-000000000015",
+      zcashAddress: "u1" + "d".repeat(211),
+    });
+
+    const json = await res.json();
+    expect(res.status).toBe(500);
+    expect(json.error).toMatch(/server key/i);
+    expect(json.details).toBe("Invalid API key");
   });
 });

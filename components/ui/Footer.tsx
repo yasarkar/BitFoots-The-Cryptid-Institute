@@ -399,18 +399,6 @@ export const Footer: React.FC<FooterProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-3 sm:gap-2">
-            {onOpenAbout && (
-              <>
-                <button
-                  type="button"
-                  onClick={onOpenAbout}
-                  className="text-[#ffddcc] underline underline-offset-2 transition-colors hover:text-[#eaba49]"
-                >
-                  Field Dossier (Archive)
-                </button>
-                <span className="text-[#3a475c]">•</span>
-              </>
-            )}
             <span className="hidden text-[#3a475c] md:inline">•</span>
             <span className="hidden text-[#ffddcc]/60 lg:inline">ZCASH SHIELDED POOL + BITCOIN ORDINALS</span>
             <span className="text-[#3a475c]">•</span>

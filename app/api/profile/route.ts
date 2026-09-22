@@ -3,6 +3,7 @@ import { isValidUuid } from "@/lib/uuid";
 import { assertJsonRequest, getClientKey, rateLimit } from "@/lib/apiGuard";
 import { sanitizeUnlockedSectors } from "@/lib/scoring";
 import { supabaseAdmin, isSupabaseAnyConfigured } from "@/lib/supabaseAdmin";
+import { isDatabaseAuthError, upsertTolerantToSchema } from "@/lib/postgrest";
 
 export const dynamic = "force-dynamic";
 
@@ -101,15 +102,57 @@ export async function POST(req: NextRequest) {
     }
 
     let isLiveSupabase = false;
+    let droppedColumns: string[] = [];
 
     if (isSupabaseAnyConfigured && supabaseAdmin) {
-      const { error } = await supabaseAdmin.from("profiles").upsert(record, { onConflict: "id" });
+      const client = supabaseAdmin;
+
+      // The live database may lag behind `supabase/schema.sql` (e.g. it can still
+      // miss `is_custom_avatar`). PostgREST then rejects the whole statement, so a
+      // save that also carried a Zcash shielded address used to be discarded in
+      // full. Retry without the unknown column instead of losing the rest.
+      const {
+        error,
+        droppedColumns: schemaMisses,
+        payload,
+      } = await upsertTolerantToSchema(record, (nextPayload) =>
+        client.from("profiles").upsert(nextPayload, { onConflict: "id" })
+      );
+
+      droppedColumns = schemaMisses;
 
       if (error) {
         console.error("Supabase profile sync failed:", error.message);
         return NextResponse.json(
-          { success: false, error: "Profile sync rejected by the database." },
+          {
+            success: false,
+            error: isDatabaseAuthError(error)
+              ? "Profile sync rejected: the server key was refused by the database. Set a valid SUPABASE_SERVICE_ROLE_KEY (and run supabase/schema.sql)."
+              : "Profile sync rejected by the database.",
+            details: error.message,
+          },
           { status: 500 }
+        );
+      }
+
+      if (Object.keys(payload).length <= 2) {
+        // Only `id` + `updated_at` survived: nothing the client asked for could be stored.
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Live database schema is missing every supplied profile column (${droppedColumns.join(
+              ", "
+            )}). Run supabase/schema.sql.`,
+          },
+          { status: 500 }
+        );
+      }
+
+      if (droppedColumns.length > 0) {
+        console.warn(
+          `Profile sync skipped columns missing from the live schema (${droppedColumns.join(
+            ", "
+          )}). Run supabase/schema.sql so the database matches the application code.`
         );
       }
 
@@ -121,6 +164,7 @@ export async function POST(req: NextRequest) {
       isLiveSupabase,
       userId: body.userId,
       unlockedSectors: unlockedSectors ?? null,
+      droppedColumns,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to sync hunter profile.";
