@@ -1,60 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
+import { getAvatarDataUri } from "@/lib/avatarResolver";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 /**
- * Resolves avatar URL/path to a self-contained base64 data URI.
- * Guarantees zero CORS/taint issues on canvas export and full offline independence.
+ * Avatar resolution (path-traversal and SSRF hardening) lives in
+ * `lib/avatarResolver.ts` so it can be unit tested; see SEC-1.
  */
-async function getAvatarDataUri(avatarParam: string | null): Promise<string> {
-  const defaultHeadPath = path.join(
-    process.cwd(),
-    "public",
-    "bitfoot-heads",
-    "bitfoot-head-01.png"
-  );
-
-  if (avatarParam) {
-    const cleanAvatar = avatarParam.trim();
-    if (cleanAvatar.startsWith("data:image/")) {
-      return cleanAvatar;
-    }
-
-    if (cleanAvatar.startsWith("http://") || cleanAvatar.startsWith("https://")) {
-      try {
-        const res = await fetch(cleanAvatar, {
-          signal: AbortSignal.timeout(3500),
-        });
-        if (res.ok) {
-          const mime = res.headers.get("content-type") || "image/png";
-          const buffer = Buffer.from(await res.arrayBuffer());
-          return `data:${mime};base64,${buffer.toString("base64")}`;
-        }
-      } catch (err) {
-        console.warn("Could not fetch remote avatar for OG card, falling back", err);
-      }
-    } else {
-      // Local path e.g. /bitfoot-heads/bitfoot-head-05.png
-      const sanitized = cleanAvatar.replace(/^\/+/, "");
-      const fullPath = path.join(process.cwd(), "public", sanitized);
-      if (fs.existsSync(fullPath)) {
-        const buffer = fs.readFileSync(fullPath);
-        return `data:image/png;base64,${buffer.toString("base64")}`;
-      }
-    }
-  }
-
-  // Fallback to authentic BitFoot head 01
-  if (fs.existsSync(defaultHeadPath)) {
-    const buffer = fs.readFileSync(defaultHeadPath);
-    return `data:image/png;base64,${buffer.toString("base64")}`;
-  }
-
-  return "";
-}
 
 function escapeXml(unsafe: string): string {
   return unsafe
@@ -73,9 +26,7 @@ export async function GET(req: NextRequest) {
     const time = escapeXml(searchParams.get("time") || "0.0s");
     const chapter = searchParams.get("chapter") || "1";
     const rawUsername = searchParams.get("username") || "Cryptid_Hunter";
-    const username = escapeXml(
-      rawUsername.startsWith("@") ? rawUsername : `@${rawUsername}`
-    );
+    const username = escapeXml(rawUsername.startsWith("@") ? rawUsername : `@${rawUsername}`);
     const avatarParam = searchParams.get("avatar");
     const uuidParam = escapeXml(searchParams.get("uuid") || "N/A");
 
@@ -84,15 +35,11 @@ export async function GET(req: NextRequest) {
       uuidParam !== "N/A" && uuidParam.length > 18
         ? `${uuidParam.slice(0, 8)}...${uuidParam.slice(-6)}`
         : uuidParam !== "N/A"
-        ? uuidParam
-        : "BF-ORD-7749-ZK";
+          ? uuidParam
+          : "BF-ORD-7749-ZK";
 
     const defaultBadge =
-      chapter === "3"
-        ? "Apex Grand Hunter"
-        : chapter === "2"
-        ? "Grid Navigator"
-        : "Forest Walker";
+      chapter === "3" ? "Apex Grand Hunter" : chapter === "2" ? "Grid Navigator" : "Forest Walker";
 
     const badge = escapeXml(searchParams.get("badge") || defaultBadge);
 
@@ -100,8 +47,8 @@ export async function GET(req: NextRequest) {
       chapter === "3"
         ? "SECTOR 03: SHIELDED ZK EXPEDITION"
         : chapter === "2"
-        ? "SECTOR 02: 90° GEOMETRIC FOREST"
-        : "SECTOR 01: FIRST TRACE EXPEDITION";
+          ? "SECTOR 02: 90° GEOMETRIC FOREST"
+          : "SECTOR 01: FIRST TRACE EXPEDITION";
 
     // Retrieve avatar data URI
     const avatarDataUri = await getAvatarDataUri(avatarParam);

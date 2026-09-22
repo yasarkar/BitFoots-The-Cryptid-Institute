@@ -1,9 +1,5 @@
 import { NextResponse } from "next/server";
-import {
-  supabaseAdmin,
-  isSupabaseAnyConfigured,
-  devMockStore,
-} from "@/lib/supabaseAdmin";
+import { supabaseAdmin, isSupabaseAnyConfigured, devMockStore } from "@/lib/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
 
@@ -121,9 +117,7 @@ export async function GET() {
       try {
         const { data, error } = await supabaseAdmin
           .from("chapter_scores")
-          .select(
-            "id, user_id, chapter, points, duration_ms, created_at, profiles(x_username, x_avatar_url)"
-          )
+          .select("id, user_id, chapter, points, duration_ms, created_at, profiles(x_username, x_avatar_url)")
           .order("created_at", { ascending: false })
           .limit(12);
 
@@ -221,7 +215,7 @@ export async function GET() {
 
     // 5. Estimated Online Hunters
     // Base active field agents + dynamic variance
-    const onlineHuntersEstimate = 38 + Math.floor((new Date().getUTCMinutes() % 10));
+    const onlineHuntersEstimate = 38 + Math.floor(new Date().getUTCMinutes() % 10);
 
     const responseData: TelemetryData = {
       success: true,

@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ChapterScoreBreakdown } from "@/lib/eventBus";
+import { generateUuid, isValidUuid } from "@/lib/uuid";
+import { assertJsonRequest, getClientKey, rateLimit } from "@/lib/apiGuard";
+import { consumeRunToken } from "@/lib/runTokens";
 import {
-  supabaseAdmin,
-  isSupabaseAnyConfigured,
-  devMockStore,
-  isValidUuid,
-} from "@/lib/supabaseAdmin";
-import { SECTORS } from "@/game/config/sectors";
+  computeChapterScore,
+  countValidFootprints,
+  getSectorConfig,
+  isChapterId,
+  nextSectorAfter,
+  validateCompletionWindow,
+  type ChapterId,
+} from "@/lib/scoring";
+import { supabaseAdmin, isSupabaseAnyConfigured, devMockStore } from "@/lib/supabaseAdmin";
+
+export const dynamic = "force-dynamic";
 
 export interface ChapterCompleteRequest {
   chapterId: number;
@@ -15,121 +22,141 @@ export interface ChapterCompleteRequest {
   avatarUrl?: string;
   zcashAddress?: string;
   isGuest?: boolean;
-  startTime: number;
-  endTime: number;
+  /**
+   * @deprecated SEC-4: client timestamps are no longer trusted. They remain
+   * optional for payload compatibility; the authoritative duration is derived
+   * from the server-issued `runToken`.
+   */
+  startTime?: number;
+  endTime?: number;
   collectedIds: string[];
   foundSecretSilhouette?: boolean;
   gateAnswerIndex: number;
+  /** Single-use token issued by `POST /api/chapter/start`. */
+  runToken?: string;
 }
 
-const ALLOWED_FOOTPRINTS: Record<number, Set<string>> = {
-  1: new Set(["fp_1", "fp_2", "fp_3", "fp_4", "fp_5", "fp_6", "fp_7", "fp_8"]),
-  2: new Set(["ch2_fp_1", "ch2_fp_2", "ch2_fp_3", "ch2_fp_4", "ch2_fp_5", "ch2_fp_6"]),
-  3: new Set(["ch3_fp_1", "ch3_fp_2", "ch3_fp_3", "ch3_fp_4", "ch3_fp_5", "ch3_fp_6"]),
-};
+const USERNAME_MAX_LENGTH = 40;
+const AVATAR_URL_MAX_LENGTH = 512;
+const ZCASH_ADDRESS_MAX_LENGTH = 128;
+const FALLBACK_AVATAR_URL = "/bitfoot-heads/bitfoot-head-01.png";
 
-function generateFallbackUuid(): string {
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
+function sanitizeUsername(value: unknown): string {
+  if (typeof value !== "string") return "Guest_Hunter";
+  const trimmed = value.trim().slice(0, USERNAME_MAX_LENGTH);
+  return trimmed || "Guest_Hunter";
+}
+
+/** Only same-origin static paths and https URLs survive sanitisation. */
+function sanitizeAvatarUrl(value: unknown): string {
+  if (typeof value !== "string") return FALLBACK_AVATAR_URL;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > AVATAR_URL_MAX_LENGTH) return FALLBACK_AVATAR_URL;
+  if (trimmed.includes("..") || trimmed.includes("\\")) return FALLBACK_AVATAR_URL;
+  if (trimmed.startsWith("/") || trimmed.startsWith("https://")) return trimmed;
+  return FALLBACK_AVATAR_URL;
+}
+
+function sanitizeZcashAddress(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > ZCASH_ADDRESS_MAX_LENGTH) return undefined;
+  return trimmed;
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const body: ChapterCompleteRequest = await req.json();
+    // 0. Transport hardening: JSON only, size capped, rate limited.
+    const guardError = assertJsonRequest(req);
+    if (guardError) {
+      return NextResponse.json({ success: false, error: guardError.error }, { status: guardError.status });
+    }
+
+    if (!rateLimit(getClientKey(req, "chapter-complete"), 30, 60_000)) {
+      return NextResponse.json(
+        { success: false, error: "Too many clearance submissions. Please slow down." },
+        { status: 429 }
+      );
+    }
+
+    const body: ChapterCompleteRequest | null = await req.json().catch(() => null);
+    if (!body || typeof body !== "object") {
+      return NextResponse.json(
+        { success: false, error: "Malformed clearance verification payload." },
+        { status: 400 }
+      );
+    }
+
     const {
-      chapterId = 1,
+      chapterId: rawChapterId,
       userId: rawUserId,
-      username = "Guest_Hunter",
-      avatarUrl = "/bitfoot-heads/bitfoot-head-01.png",
+      username,
+      avatarUrl,
       zcashAddress,
       isGuest = true,
-      startTime,
-      endTime,
       collectedIds,
       foundSecretSilhouette = false,
       gateAnswerIndex,
+      runToken,
     } = body;
 
-    // Ensure valid UUID format for PostgreSQL UUID column
-    const validUserId = isValidUuid(rawUserId || "") ? (rawUserId as string) : generateFallbackUuid();
-
-    // 1. Basic Validation
-    if (!startTime || !endTime || typeof startTime !== "number" || typeof endTime !== "number") {
+    // 1. The sector must be one of the three real sectors (raw value, no coercion).
+    if (!isChapterId(rawChapterId)) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Missing or invalid telemetry timestamp parameters.",
-        },
+        { success: false, error: "Invalid sector ID: only sectors 1-3 exist." },
         { status: 400 }
       );
     }
 
-    const durationMs = endTime - startTime;
-    const sectorConfig = SECTORS[chapterId] || SECTORS[1];
-    const minFloorMs = 2000; // 2 seconds minimum floor to guard against instant script spam while allowing fast clears
+    const chapterId: ChapterId = rawChapterId;
+    const sector = getSectorConfig(chapterId);
 
-    // 2. Anti-cheat minimum duration check
-    if (durationMs < minFloorMs) {
+    // 2. Run token: proves the run started server-side and can only be used once.
+    const tokenResult = consumeRunToken(runToken, chapterId);
+    if (!tokenResult.ok) {
       return NextResponse.json(
-        {
-          success: false,
-          error: `Invalid clearance duration: Sector ${chapterId} survey telemetry is too fast (${Math.round(durationMs)}ms).`,
-          durationMs,
-        },
+        { success: false, error: tokenResult.reason, code: "RUN_TOKEN_REJECTED" },
         { status: 400 }
       );
     }
 
-    // 3. Footprints validation
-    const rawIds = Array.isArray(collectedIds) ? collectedIds : [];
-    const uniqueIds = Array.from(new Set(rawIds));
-    const allowedSet = ALLOWED_FOOTPRINTS[chapterId] || ALLOWED_FOOTPRINTS[1];
-    const maxFootprints = sectorConfig.tracesRequired || 6;
+    const durationMs = Math.max(0, Date.now() - tokenResult.issuedAt);
 
-    const validFootprints = uniqueIds.filter((id) => allowedSet.has(id));
-    const validFootprintsCount = Math.min(validFootprints.length, maxFootprints);
+    // 3. Anti-cheat completion window, measured entirely server side.
+    const windowCheck = validateCompletionWindow(chapterId, durationMs);
+    if (!windowCheck.ok) {
+      return NextResponse.json({ success: false, error: windowCheck.error, durationMs }, { status: 400 });
+    }
 
-    const basePointPerTrace = chapterId === 3 ? 20 : 10;
-    const footprintsScore = validFootprintsCount * basePointPerTrace;
+    // 4. Identity fields are sanitised before they ever reach the database.
+    const validUserId = isValidUuid(rawUserId || "") ? (rawUserId as string) : generateUuid();
+    const safeUsername = sanitizeUsername(username);
+    const safeAvatarUrl = sanitizeAvatarUrl(avatarUrl);
+    const safeZcashAddress = sanitizeZcashAddress(zcashAddress);
+    const safeIsGuest = Boolean(isGuest);
 
-    // 4. Secret Silhouette (Only in Sector 1)
-    const silhouetteScore = chapterId === 1 && foundSecretSilhouette === true ? 50 : 0;
+    // 5. Scoring uses only server validated inputs (single source of truth).
+    const validFootprintsCount = countValidFootprints(chapterId, collectedIds, sector.tracesRequired);
 
-    // 5. Gate Verification Question Check
-    const correctIndex = sectorConfig.gateQuestion.correctAnswerIndex;
-    const gateScore = gateAnswerIndex === correctIndex ? 100 : 0;
+    const gateAnswerCorrect = Number(gateAnswerIndex) === sector.gateQuestion.correctAnswerIndex;
 
-    // 6. Speed Bonus
-    let speedBonus = 0;
-    if (durationMs < 30000) speedBonus = 100;
-    else if (durationMs < 45000) speedBonus = 60;
-    else if (durationMs < 70000) speedBonus = 30;
-
-    // 7. Verified Total Score
-    const totalScore = footprintsScore + silhouetteScore + gateScore + speedBonus;
-    const timeElapsedSeconds = Math.round(durationMs / 1000);
-
-    const breakdown: ChapterScoreBreakdown = {
-      footprintsScore,
+    const { breakdown, totalScore, timeElapsedSeconds } = computeChapterScore({
+      chapterId,
+      durationMs,
       validFootprintsCount,
-      silhouetteScore,
-      gateScore,
-      speedBonus,
-    };
+      foundSecretSilhouette: foundSecretSilhouette === true,
+      gateAnswerCorrect,
+    });
 
-    // Calculate progression: unlock next sector if legitimate clearance
-    const nextSector = Math.min(3, chapterId + 1);
-    let updatedUnlockedSectors: number[] = [1, nextSector];
+    // 6. Progression: a validated clearance unlocks the next sector.
+    const nextSector = nextSectorAfter(chapterId);
+    let updatedUnlockedSectors: number[] = Array.from(new Set([1, nextSector])).sort((a, b) => a - b);
     let userRank: number | null = null;
     let totalUserPoints: number = totalScore;
 
-    // 8. Database Recording to Supabase
+    // 7. Persist the verified clearance and its score record.
     if (isSupabaseAnyConfigured && supabaseAdmin) {
       try {
-        // Fetch existing profile to preserve unlocked sectors
         const { data: existingProfile } = await supabaseAdmin
           .from("profiles")
           .select("unlocked_sectors, highest_score")
@@ -144,29 +171,34 @@ export async function POST(req: NextRequest) {
           (a, b) => a - b
         );
 
-        // Upsert Profile with progress and latest call-sign
-        await supabaseAdmin.from("profiles").upsert(
+        const { error: profileErr } = await supabaseAdmin.from("profiles").upsert(
           {
             id: validUserId,
-            x_username: username,
-            x_avatar_url: avatarUrl,
-            is_guest: isGuest,
+            x_username: safeUsername,
+            x_avatar_url: safeAvatarUrl,
+            is_guest: safeIsGuest,
             unlocked_sectors: updatedUnlockedSectors,
-            ...(zcashAddress ? { zcash_address: zcashAddress } : {}),
+            ...(safeZcashAddress ? { zcash_address: safeZcashAddress } : {}),
             updated_at: new Date().toISOString(),
           },
           { onConflict: "id" }
         );
 
-        // Insert new clearance score record
-        await supabaseAdmin.from("chapter_scores").insert({
+        if (profileErr) {
+          throw new Error(profileErr.message);
+        }
+
+        const { error: scoreErr } = await supabaseAdmin.from("chapter_scores").insert({
           user_id: validUserId,
           chapter: chapterId,
           points: totalScore,
           duration_ms: durationMs,
         });
 
-        // Query user's current standing from the leaderboard view
+        if (scoreErr) {
+          throw new Error(scoreErr.message);
+        }
+
         const { data: standing } = await supabaseAdmin
           .from("leaderboard")
           .select("rank, total_points, chapters_cleared, best_time_ms")
@@ -181,9 +213,9 @@ export async function POST(req: NextRequest) {
         console.error("Supabase DB Save Exception:", dbErr);
         devMockStore.recordScore({
           userId: validUserId,
-          username,
-          avatarUrl,
-          isGuest,
+          username: safeUsername,
+          avatarUrl: safeAvatarUrl,
+          isGuest: safeIsGuest,
           chapter: chapterId,
           points: totalScore,
           durationMs,
@@ -193,9 +225,9 @@ export async function POST(req: NextRequest) {
     } else {
       devMockStore.recordScore({
         userId: validUserId,
-        username,
-        avatarUrl,
-        isGuest,
+        username: safeUsername,
+        avatarUrl: safeAvatarUrl,
+        isGuest: safeIsGuest,
         chapter: chapterId,
         points: totalScore,
         durationMs,
@@ -215,13 +247,8 @@ export async function POST(req: NextRequest) {
       totalUserPoints,
       userId: validUserId,
     });
-  } catch (error: any) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: error?.message || "An error occurred during score verification.",
-      },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "An error occurred during score verification.";
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
