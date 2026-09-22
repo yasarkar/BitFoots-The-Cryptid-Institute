@@ -177,6 +177,29 @@ export default function GamePage() {
     };
   }, [settings]);
 
+  // Handle OAuth callback notifications (linking success & auth errors)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const authError = params.get("auth_error");
+    const linked = params.get("linked");
+
+    if (authError) {
+      setBonusNotification(`Auth Alert: ${authError}`);
+      setTimeout(() => setBonusNotification(null), 5000);
+      const url = new URL(window.location.href);
+      url.searchParams.delete("auth_error");
+      window.history.replaceState({}, "", url.pathname + (url.search ? url.search : ""));
+    } else if (linked) {
+      const providerLabel = linked === "x" || linked === "twitter" ? "X (Twitter)" : "Google";
+      setBonusNotification(`Identity Verified: ${providerLabel} connected successfully!`);
+      setTimeout(() => setBonusNotification(null), 5000);
+      const url = new URL(window.location.href);
+      url.searchParams.delete("linked");
+      window.history.replaceState({}, "", url.pathname + (url.search ? url.search : ""));
+    }
+  }, []);
+
   // HUD Timer
   useEffect(() => {
     if (!isTimerRunning) return;

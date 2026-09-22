@@ -343,7 +343,7 @@ export function useHunterSession() {
             prev.avatarUrl && !prev.avatarUrl.includes("dicebear")
               ? prev.avatarUrl
               : getDefaultBitfootAvatar(trimmed),
-          isGuest: false,
+          isGuest: prev.authProvider && prev.authProvider !== "guest" ? false : (prev.isGuest ?? true),
           isLoggedIn: true,
         };
 
@@ -387,6 +387,7 @@ export function useHunterSession() {
           username: nextUsername || prev.username,
           avatarUrl: nextAvatar || prev.avatarUrl,
           zcashAddress: nextZcash,
+          isGuest: prev.authProvider && prev.authProvider !== "guest" ? false : (prev.isGuest ?? true),
           isLoggedIn: true,
         };
 
@@ -430,18 +431,46 @@ export function useHunterSession() {
   }, []);
 
   const linkX = useCallback(async () => {
-    if (profile.isLoggedIn && !profile.isGuest) {
-      return await linkTwitterIdentity();
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user && profile.authProvider && profile.authProvider !== "guest") {
+          const res = await linkTwitterIdentity();
+          if (res?.error) {
+            const errMsg = res.error.message?.toLowerCase() || "";
+            if (errMsg.includes("bearer") || errMsg.includes("unauthorized") || (res.error as any)?.status === 401) {
+              return await signInWithTwitter();
+            }
+          }
+          return res;
+        }
+      } catch (err) {
+        console.warn("Session check error in linkX, falling back to sign-in:", err);
+      }
     }
     return await signInWithTwitter();
-  }, [profile.isLoggedIn, profile.isGuest]);
+  }, [profile.authProvider, isSupabaseConfigured]);
 
   const linkGoogle = useCallback(async () => {
-    if (profile.isLoggedIn && !profile.isGuest) {
-      return await linkGoogleIdentity();
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user && profile.authProvider && profile.authProvider !== "guest") {
+          const res = await linkGoogleIdentity();
+          if (res?.error) {
+            const errMsg = res.error.message?.toLowerCase() || "";
+            if (errMsg.includes("bearer") || errMsg.includes("unauthorized") || (res.error as any)?.status === 401) {
+              return await signInWithGoogle();
+            }
+          }
+          return res;
+        }
+      } catch (err) {
+        console.warn("Session check error in linkGoogle, falling back to sign-in:", err);
+      }
     }
     return await signInWithGoogle();
-  }, [profile.isLoggedIn, profile.isGuest]);
+  }, [profile.authProvider, isSupabaseConfigured]);
 
   const logout = useCallback(async () => {
     if (isSupabaseConfigured && supabase) {

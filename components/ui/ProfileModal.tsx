@@ -190,10 +190,13 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const handleConnectX = async () => {
     try {
       setLinkingAuth("twitter");
-      if (onLinkX) {
-        await onLinkX();
-      } else {
-        await onLoginWithX();
+      setErrorMsg(null);
+      const res = onLinkX ? await onLinkX() : await onLoginWithX();
+      if (res?.error) {
+        throw res.error;
+      }
+      if (res?.data?.url && typeof window !== "undefined") {
+        window.location.href = res.data.url;
       }
     } catch (e: any) {
       console.error("X linking failed:", e);
@@ -206,10 +209,13 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const handleConnectGoogle = async () => {
     try {
       setLinkingAuth("google");
-      if (onLinkGoogle) {
-        await onLinkGoogle();
-      } else {
-        await onLoginWithGoogle();
+      setErrorMsg(null);
+      const res = onLinkGoogle ? await onLinkGoogle() : await onLoginWithGoogle();
+      if (res?.error) {
+        throw res.error;
+      }
+      if (res?.data?.url && typeof window !== "undefined") {
+        window.location.href = res.data.url;
       }
     } catch (e: any) {
       console.error("Google linking failed:", e);

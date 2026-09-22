@@ -28,18 +28,27 @@ export async function GET(request: NextRequest) {
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     if (supabaseUrl && supabaseAnonKey && !supabaseUrl.includes("your-project")) {
-      const supabase = createClient(supabaseUrl, supabaseAnonKey);
-      await supabase.auth.exchangeCodeForSession(code);
+      try {
+        const supabase = createClient(supabaseUrl, supabaseAnonKey);
+        await supabase.auth.exchangeCodeForSession(code);
+      } catch (err) {
+        console.warn("Server-side code exchange skipped or failed:", err);
+      }
     }
+  }
+
+  const redirectUrl = new URL(safeNext, origin);
+
+  // Forward PKCE code to client so browser-based supabase-js can complete exchange with localStorage verifier
+  if (code) {
+    redirectUrl.searchParams.set("code", code);
   }
 
   // Preserve identity linking status flag if present
   if (linked) {
-    const redirectUrl = new URL(safeNext, origin);
     redirectUrl.searchParams.set("linked", linked);
-    return NextResponse.redirect(redirectUrl.toString());
   }
 
-  return NextResponse.redirect(`${origin}${safeNext}`);
+  return NextResponse.redirect(redirectUrl.toString());
 }
 

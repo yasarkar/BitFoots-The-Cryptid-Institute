@@ -72,5 +72,13 @@ describe("GET /auth/callback", () => {
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toBe("https://bitfoots.vercel.app/?linked=google");
   });
+
+  it("preserves code parameter in redirection for client PKCE exchange", async () => {
+    const req = new NextRequest("https://bitfoots.vercel.app/auth/callback?code=mock_auth_code_123");
+    const res = await GET(req);
+
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toBe("https://bitfoots.vercel.app/?code=mock_auth_code_123");
+  });
 });
 
