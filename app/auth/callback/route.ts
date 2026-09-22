@@ -18,9 +18,7 @@ export async function GET(request: NextRequest) {
   // If OAuth error occurred (e.g. identity already linked or user cancelled)
   if (error || errorDescription) {
     const errorMsg = errorDescription || error || "Authentication failed.";
-    return NextResponse.redirect(
-      `${origin}/?auth_error=${encodeURIComponent(errorMsg)}`
-    );
+    return NextResponse.redirect(`${origin}/?auth_error=${encodeURIComponent(errorMsg)}`);
   }
 
   if (code) {
@@ -51,4 +49,3 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.redirect(redirectUrl.toString());
 }
-

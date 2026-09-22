@@ -202,7 +202,9 @@ export async function linkTwitterIdentity() {
   }
 
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (!session?.user) {
       return await signInWithTwitter();
     }
@@ -258,7 +260,9 @@ export async function linkGoogleIdentity() {
   }
 
   try {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (!session?.user) {
       return await signInWithGoogle();
     }

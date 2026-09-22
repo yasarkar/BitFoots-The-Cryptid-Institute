@@ -478,9 +478,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             </div>
 
             {/* Validation Feedback & Privacy Lore Callout */}
-            <div className="flex flex-col gap-1 min-h-[18px]">
+            <div className="flex min-h-[18px] flex-col gap-1">
               {showValidNotice ? (
-                <p className="flex items-center gap-1 font-mono text-[11px] text-[#7fc98f] animate-in fade-in duration-200">
+                <p className="animate-in fade-in flex items-center gap-1 font-mono text-[11px] text-[#7fc98f] duration-200">
                   <ShieldCheck className="h-3 w-3" />
                   <span>Valid Zcash Shielded Address</span>
                 </p>
@@ -490,7 +490,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   <span>Shielded Address configured for research grants & confidential airdrops</span>
                 </p>
               ) : zcashValidation.status === "invalid_prefix" ? (
-                <p className="flex items-center gap-1 font-mono text-[11px] text-[#e07a6b] animate-in fade-in duration-200">
+                <p className="animate-in fade-in flex items-center gap-1 font-mono text-[11px] text-[#e07a6b] duration-200">
                   {zcashValidation.message}
                 </p>
               ) : zcashValidation.status === "too_short" ? (
@@ -517,8 +517,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 Boolean(profile.linkedProviders?.some((p) => p === "twitter" || p === "x")) ||
                 profile.authProvider === "twitter";
               const isGoogleLinked =
-                Boolean(profile.linkedProviders?.includes("google")) ||
-                profile.authProvider === "google";
+                Boolean(profile.linkedProviders?.includes("google")) || profile.authProvider === "google";
 
               return (
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -531,7 +530,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                         </svg>
                       </div>
                       <div className="flex flex-col">
-                        <span className={`text-[11px] ${isTwitterLinked ? "text-[#7fc98f]" : "text-[#7d8898]"}`}>
+                        <span
+                          className={`text-[11px] ${isTwitterLinked ? "text-[#7fc98f]" : "text-[#7d8898]"}`}
+                        >
                           {isTwitterLinked ? "Linked & Verified" : "Not Linked"}
                         </span>
                       </div>
@@ -563,7 +564,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                         </svg>
                       </div>
                       <div className="flex flex-col">
-                        <span className={`text-[11px] ${isGoogleLinked ? "text-[#7fc98f]" : "text-[#7d8898]"}`}>
+                        <span
+                          className={`text-[11px] ${isGoogleLinked ? "text-[#7fc98f]" : "text-[#7d8898]"}`}
+                        >
                           {isGoogleLinked ? "Linked & Verified" : "Not Linked"}
                         </span>
                       </div>
@@ -592,13 +595,13 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
           {/* Feedback messages */}
           {errorMsg && (
-            <p className="flex items-center gap-1 rounded-lg border border-red-500/30 bg-red-950/20 p-2 font-mono text-xs text-[#e07a6b] animate-in fade-in duration-200">
+            <p className="animate-in fade-in flex items-center gap-1 rounded-lg border border-red-500/30 bg-red-950/20 p-2 font-mono text-xs text-[#e07a6b] duration-200">
               <AlertCircle className="h-3.5 w-3.5 shrink-0" />
               <span>{errorMsg}</span>
             </p>
           )}
           {saveSuccess && (
-            <p className="flex items-center gap-1 rounded-lg border border-[#7fc98f]/40 bg-[#7fc98f]/15 p-2 font-mono text-xs text-[#7fc98f] animate-in fade-in duration-200">
+            <p className="animate-in fade-in flex items-center gap-1 rounded-lg border border-[#7fc98f]/40 bg-[#7fc98f]/15 p-2 font-mono text-xs text-[#7fc98f] duration-200">
               <Check className="h-3.5 w-3.5 shrink-0" />
               <span>Hunter Dossier and Shielded Credentials saved successfully!</span>
             </p>

@@ -248,9 +248,9 @@ export function useHunterSession() {
               const cloudSectors = Array.isArray(guestDbProfile.unlocked_sectors)
                 ? guestDbProfile.unlocked_sectors
                 : [];
-              const merged = Array.from(
-                new Set([...initialClearances, ...cloudSectors])
-              ).sort((a, b) => a - b);
+              const merged = Array.from(new Set([...initialClearances, ...cloudSectors])).sort(
+                (a, b) => a - b
+              );
               setProfile((prev) => {
                 const nextZcash = prev.zcashAddress || guestDbProfile.zcash_address || "";
                 const nextUsername = prev.username || guestDbProfile.x_username || "";
@@ -303,10 +303,7 @@ export function useHunterSession() {
             avatarUrl: cloudProfile?.x_avatar_url || avatarUrl,
             isGuest: false,
             isLoggedIn: true,
-            zcashAddress:
-              cloudProfile?.zcash_address ||
-              (userMeta as any)?.zcash_address ||
-              "",
+            zcashAddress: cloudProfile?.zcash_address || (userMeta as any)?.zcash_address || "",
             authProvider,
             linkedProviders,
             unlockedSectors: mergedSectors,
@@ -433,12 +430,18 @@ export function useHunterSession() {
   const linkX = useCallback(async () => {
     if (isSupabaseConfigured && supabase) {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
         if (session?.user && profile.authProvider && profile.authProvider !== "guest") {
           const res = await linkTwitterIdentity();
           if (res?.error) {
             const errMsg = res.error.message?.toLowerCase() || "";
-            if (errMsg.includes("bearer") || errMsg.includes("unauthorized") || (res.error as any)?.status === 401) {
+            if (
+              errMsg.includes("bearer") ||
+              errMsg.includes("unauthorized") ||
+              (res.error as any)?.status === 401
+            ) {
               return await signInWithTwitter();
             }
           }
@@ -454,12 +457,18 @@ export function useHunterSession() {
   const linkGoogle = useCallback(async () => {
     if (isSupabaseConfigured && supabase) {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
         if (session?.user && profile.authProvider && profile.authProvider !== "guest") {
           const res = await linkGoogleIdentity();
           if (res?.error) {
             const errMsg = res.error.message?.toLowerCase() || "";
-            if (errMsg.includes("bearer") || errMsg.includes("unauthorized") || (res.error as any)?.status === 401) {
+            if (
+              errMsg.includes("bearer") ||
+              errMsg.includes("unauthorized") ||
+              (res.error as any)?.status === 401
+            ) {
               return await signInWithGoogle();
             }
           }

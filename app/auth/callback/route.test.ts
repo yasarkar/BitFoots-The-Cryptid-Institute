@@ -81,4 +81,3 @@ describe("GET /auth/callback", () => {
     expect(res.headers.get("location")).toBe("https://bitfoots.vercel.app/?code=mock_auth_code_123");
   });
 });
-
