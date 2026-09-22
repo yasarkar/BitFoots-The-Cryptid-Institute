@@ -1,9 +1,6 @@
 import * as Phaser from "phaser";
 import { BaseSectorScene } from "./BaseSectorScene";
-import {
-  gameEventBus,
-  FootprintCollectedPayload,
-} from "@/lib/eventBus";
+import { gameEventBus, FootprintCollectedPayload } from "@/lib/eventBus";
 
 interface CollapsingTile {
   key: string;
@@ -117,13 +114,7 @@ export class Chapter2Scene extends BaseSectorScene {
       this
     );
 
-    this.physics.add.overlap(
-      this.player,
-      this.exitGate,
-      this.openGateModal,
-      undefined,
-      this
-    );
+    this.physics.add.overlap(this.player, this.exitGate, this.openGateModal, undefined, this);
 
     this.setupBaseControls();
     this.setupBaseEventBus();
@@ -245,16 +236,15 @@ export class Chapter2Scene extends BaseSectorScene {
 
     const px = this.player.x;
     // Laser 1 is at x: 260, Laser 2 is at x: 440
-    if ((Math.abs(px - 260) < 10 && this.player.y > 50 && this.player.y < 430) ||
-        (Math.abs(px - 440) < 10 && this.player.y > 50 && this.player.y < 430)) {
+    if (
+      (Math.abs(px - 260) < 10 && this.player.y > 50 && this.player.y < 430) ||
+      (Math.abs(px - 440) < 10 && this.player.y > 50 && this.player.y < 430)
+    ) {
       this.takeDamage(1, "Laser Pulse Disruption");
     }
   }
 
-  private handleCollectFootprint(
-    _p: Phaser.GameObjects.GameObject,
-    fpObj: Phaser.GameObjects.GameObject
-  ) {
+  private handleCollectFootprint(_p: Phaser.GameObjects.GameObject, fpObj: Phaser.GameObjects.GameObject) {
     const footprint = fpObj as Phaser.Physics.Arcade.Sprite;
     const footprintId = footprint.getData("id") as string;
 
