@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { HunterProfile } from "@/hooks/useHunterSession";
 import { ExportCardModal } from "./ExportCardModal";
+import { fetchHunterProfile } from "@/lib/supabaseClient";
 
 // 7-8 second timeout constant for user feedback notifications
 const NOTIFICATION_TIMEOUT_MS = 7500;
@@ -64,6 +65,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const errorTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    let isCancelled = false;
+
     if (isOpen) {
       let initialZcash = profile.zcashAddress || "";
       if (!initialZcash && typeof window !== "undefined") {
@@ -86,8 +89,25 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       setCopiedId(false);
       setCopiedZec(false);
       setLinkingAuth(null);
+
+      // Veritabanından kayıtlı Zcash adresini çek ve input alanına yükle
+      if (profile.userId) {
+        fetchHunterProfile(profile.userId)
+          .then((dbData) => {
+            if (!isCancelled && dbData?.zcash_address) {
+              setZcashInput(dbData.zcash_address);
+              if (dbData.zcash_address !== profile.zcashAddress) {
+                onUpdateProfile({ zcashAddress: dbData.zcash_address });
+              }
+            }
+          })
+          .catch((err) => {
+            console.warn("Could not fetch Zcash address from database:", err);
+          });
+      }
     }
     return () => {
+      isCancelled = true;
       if (validTimerRef.current) {
         clearTimeout(validTimerRef.current);
         validTimerRef.current = null;
@@ -101,7 +121,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         errorTimerRef.current = null;
       }
     };
-  }, [isOpen, profile.username, profile.avatarUrl, profile.zcashAddress]);
+  }, [isOpen, profile.username, profile.avatarUrl, profile.zcashAddress, profile.userId, onUpdateProfile]);
 
   if (!isOpen) return null;
 
@@ -336,59 +356,28 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 </button>
               </div>
 
-              {/* Hunter Dossier Telemetry: UUID & Zcash Address */}
-              <div className="flex flex-col gap-1 pt-1 font-mono text-[10px] text-[#7d8898] sm:justify-start">
-                <div className="flex items-center justify-center gap-2 sm:justify-start">
-                  <span className="flex items-center gap-1">
-                    <span>UUID:</span>
-                    <span className="max-w-[150px] select-all truncate text-[#aab6c9] sm:max-w-[250px]">
-                      {profile.userId || "N/A"}
-                    </span>
+              {/* Hunter Dossier Telemetry: UUID */}
+              <div className="flex items-center justify-center gap-2 pt-1 font-mono text-[10px] text-[#7d8898] sm:justify-start">
+                <span className="flex items-center gap-1">
+                  <span>UUID:</span>
+                  <span className="max-w-[150px] select-all truncate text-[#aab6c9] sm:max-w-[250px]">
+                    {profile.userId || "N/A"}
                   </span>
-                  <button
-                    type="button"
-                    onClick={handleCopyUserId}
-                    className="flex items-center gap-0.5 p-0.5 text-[#7d8898] transition-colors hover:text-[#eaba49]"
-                    title="Copy Hunter UUID"
-                  >
-                    {copiedId ? (
-                      <>
-                        <Check className="h-2.5 w-2.5 text-[#7fc98f]" />
-                        <span className="text-[#7fc98f]">Copied</span>
-                      </>
-                    ) : (
-                      <Copy className="h-2.5 w-2.5" />
-                    )}
-                  </button>
-                </div>
-
-                {/* Zcash Shielded Address Telemetry */}
-                <div className="flex items-center justify-center gap-2 sm:justify-start">
-                  <span className="flex items-center gap-1">
-                    <Coins className="h-3 w-3 text-[#eaba49]" />
-                    <span>ZCASH:</span>
-                    <span className="max-w-[150px] select-all truncate font-mono text-[#ffddcc] sm:max-w-[250px]">
-                      {zcashInput || profile.zcashAddress || "Not configured"}
-                    </span>
-                  </span>
-                  {(zcashInput || profile.zcashAddress) && (
-                    <button
-                      type="button"
-                      onClick={handleCopyZec}
-                      className="flex items-center gap-0.5 p-0.5 text-[#7d8898] transition-colors hover:text-[#eaba49]"
-                      title="Copy Zcash Address"
-                    >
-                      {copiedZec ? (
-                        <>
-                          <Check className="h-2.5 w-2.5 text-[#7fc98f]" />
-                          <span className="text-[#7fc98f]">Copied</span>
-                        </>
-                      ) : (
-                        <Copy className="h-2.5 w-2.5" />
-                      )}
-                    </button>
+                </span>
+                <button
+                  type="button"
+                  onClick={handleCopyUserId}
+                  className="flex items-center gap-0.5 p-0.5 text-[#7d8898] transition-colors hover:text-[#eaba49]"
+                >
+                  {copiedId ? (
+                    <>
+                      <Check className="h-2.5 w-2.5 text-[#7fc98f]" />
+                      <span className="text-[#7fc98f]">Copied</span>
+                    </>
+                  ) : (
+                    <Copy className="h-2.5 w-2.5" />
                   )}
-                </div>
+                </button>
               </div>
             </div>
           </div>
@@ -440,7 +429,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   ) : (
                     <>
                       <Copy className="h-3 w-3" />
-                      <span>Copy</span>
                     </>
                   )}
                 </button>
@@ -529,13 +517,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                           <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
                         </svg>
                       </div>
-                      <div className="flex flex-col">
-                        <span
-                          className={`text-[11px] ${isTwitterLinked ? "text-[#7fc98f]" : "text-[#7d8898]"}`}
-                        >
-                          {isTwitterLinked ? "Linked & Verified" : "Not Linked"}
-                        </span>
-                      </div>
                     </div>
 
                     {isTwitterLinked ? (
@@ -562,13 +543,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                         <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
                           <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z" />
                         </svg>
-                      </div>
-                      <div className="flex flex-col">
-                        <span
-                          className={`text-[11px] ${isGoogleLinked ? "text-[#7fc98f]" : "text-[#7d8898]"}`}
-                        >
-                          {isGoogleLinked ? "Linked & Verified" : "Not Linked"}
-                        </span>
                       </div>
                     </div>
 

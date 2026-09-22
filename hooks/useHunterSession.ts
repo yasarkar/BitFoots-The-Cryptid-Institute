@@ -252,7 +252,7 @@ export function useHunterSession() {
                 (a, b) => a - b
               );
               setProfile((prev) => {
-                const nextZcash = prev.zcashAddress || guestDbProfile.zcash_address || "";
+                const nextZcash = guestDbProfile.zcash_address || prev.zcashAddress || "";
                 const nextUsername = prev.username || guestDbProfile.x_username || "";
                 const nextAvatar = prev.avatarUrl || guestDbProfile.x_avatar_url || "";
                 const updated: HunterProfile = {
