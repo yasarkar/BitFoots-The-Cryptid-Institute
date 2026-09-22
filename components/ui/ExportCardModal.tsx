@@ -171,11 +171,15 @@ export const ExportCardModal: React.FC<ExportCardModalProps> = ({
 
   // Twitter / X Share URL
   const getTwitterShareUrl = () => {
-    const cardUrl = getCardUrl();
     const cleanTime = typeof timeElapsedSeconds === "number" ? `${timeElapsedSeconds}s` : timeElapsedSeconds;
     const userTag = username ? (username.startsWith("@") ? username : `@${username}`) : "@Guest_Hunter";
 
-    const text = `🌲 Here continues Tommy’s (@shelby_tommy0) latest high-stakes expedition across @BITFOOTS_!\n\n🐾 Operative: ${userTag}\n🧭 Sector: 0${chapter} Cleared\n🏆 Clearance Rank: ${finalBadge}\n⚡ Telemetry: ${score} PTS in ${cleanTime}\n\n"Never caught. You don't buy a Bitfoot, you spot him. The only price is the hunt."\n\n🔍 Inspect the verified on-chain dossier:\n${cardUrl}`;
+    const shareUrl =
+      typeof window !== "undefined" && window.location.origin && !window.location.origin.includes("localhost")
+        ? window.location.origin
+        : "https://bitfoots-the-cryptid-institute.vercel.app";
+
+    const text = `🌲 Here continues Tommy’s (@shelby_tommy0) latest high-stakes expedition across @BITFOOTS_!\n\n🐾 Operative: ${userTag}\n🧭 Sector: 0${chapter} Cleared\n🏆 Clearance Rank: ${finalBadge}\n⚡ Telemetry: ${score} PTS in ${cleanTime}\n\n"Never caught. You don't buy a Bitfoot, you spot him. The only price is the hunt."\n\n🔍 Enter The Cryptid Institute:\n${shareUrl}`;
 
     return `https://twitter.com/intent/tweet?text=${encodeURIComponent(
       text

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://bitfoots-the-cryptid-institute.vercel.app"),
   title: "The Cryptid Institute presents: Bitfoots (Series 303)",
   description:
     "Official Autonomous Zero-Knowledge & Artifact Registry. 303 Cryptid Specimens preserved on Bitcoin Ordinals and shielded within Zcash.",
@@ -20,6 +21,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "The Cryptid Institute presents: Bitfoots // Series 303",
     description: "Official Autonomous Zero-Knowledge & Cryptid Artifact Registry. Real, but unseen.",
+    url: "https://bitfoots-the-cryptid-institute.vercel.app",
     siteName: "The Cryptid Institute",
     type: "website",
   },

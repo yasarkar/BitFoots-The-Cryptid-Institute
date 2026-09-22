@@ -419,6 +419,9 @@ export default function GamePage() {
       // In Sector 3 (or whenever game is active), Space fires Sonar ping without scrolling page down
       if (e.code === "Space" || e.key === " " || e.key === "Spacebar" || e.keyCode === 32) {
         e.preventDefault();
+        if (isGameActive && activeChapter === 3 && !e.repeat && !sonarCooldown) {
+          gameEventBus.emit("TRIGGER_SONAR");
+        }
       }
 
       // If expedition is active, prevent arrow keys and page navigation from scrolling the page
@@ -429,7 +432,7 @@ export default function GamePage() {
       }
     };
 
-    window.addEventListener("keydown", handlePreventScrollKeys, { capture: true, passive: false });
+    window.addEventListener("keydown", handlePreventScrollKeys, { passive: false });
 
     // Lock body and html scroll during active expedition to keep page stationary
     if (isGameActive) {
@@ -441,11 +444,11 @@ export default function GamePage() {
     }
 
     return () => {
-      window.removeEventListener("keydown", handlePreventScrollKeys, { capture: true });
+      window.removeEventListener("keydown", handlePreventScrollKeys);
       document.body.style.overflow = "";
       document.documentElement.style.overflow = "";
     };
-  }, [isGameActive]);
+  }, [isGameActive, activeChapter, sonarCooldown]);
 
   // Keyboard shortcut 'R' to quick reload / restart expedition
   useEffect(() => {
@@ -555,21 +558,25 @@ export default function GamePage() {
     }
   };
 
-  // Generate X (Twitter) Share Link with OG Image URL
+  // Generate X (Twitter) Share Link with Clean App URL
   const getTwitterShareUrl = () => {
     if (!finishedData) return "#";
     const finalScore = finishedData.totalScore;
     const time = finishedData.timeElapsedSeconds;
     const badge =
       activeChapter === 3 ? "Apex Grand Hunter" : activeChapter === 2 ? "Grid Navigator" : "Forest Walker";
-    const cardUrl = getOgCardUrl();
     const userTag = profile.username
       ? profile.username.startsWith("@")
         ? profile.username
         : `@${profile.username}`
       : "@Guest_Hunter";
 
-    const text = `🌲 Here continues Tommy’s (@shelby_tommy0) latest high-stakes expedition across @BITFOOTS_!\n\n🐾 Operative: ${userTag}\n🧭 Sector: 0${activeChapter} Cleared\n🏆 Clearance Rank: ${badge}\n⚡ Telemetry: ${finalScore} PTS in ${time}s\n\n"Never caught. You don't buy a Bitfoot, you spot him."\n\n🔍 Inspect the verified on-chain dossier:\n${cardUrl}`;
+    const shareUrl =
+      typeof window !== "undefined" && window.location.origin && !window.location.origin.includes("localhost")
+        ? window.location.origin
+        : "https://bitfoots-the-cryptid-institute.vercel.app";
+
+    const text = `🌲 Here continues Tommy’s (@shelby_tommy0) latest high-stakes expedition across @BITFOOTS_!\n\n🐾 Operative: ${userTag}\n🧭 Sector: 0${activeChapter} Cleared\n🏆 Clearance Rank: ${badge}\n⚡ Telemetry: ${finalScore} PTS in ${time}s\n\n"Never caught. You don't buy a Bitfoot, you spot him."\n\n🔍 Enter The Cryptid Institute:\n${shareUrl}`;
 
     return `https://twitter.com/intent/tweet?text=${encodeURIComponent(
       text
