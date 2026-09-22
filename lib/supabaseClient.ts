@@ -178,6 +178,69 @@ export async function signInWithGoogle() {
 }
 
 /**
+ * Links X (Twitter) identity to the currently signed-in user account.
+ */
+export async function linkTwitterIdentity() {
+  if (!supabase) {
+    console.warn("Supabase is not configured with valid credentials.");
+    return { error: new Error("Supabase is not configured yet. Set credentials in .env.local") };
+  }
+
+  const redirectOrigin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
+
+  const res = await supabase.auth.linkIdentity({
+    provider: "x",
+    options: {
+      redirectTo: `${redirectOrigin}/auth/callback?linked=x`,
+    },
+  });
+
+  if (res.error && res.error.message?.toLowerCase().includes("not enabled")) {
+    const fallbackRes = await supabase.auth.linkIdentity({
+      provider: "twitter",
+      options: {
+        redirectTo: `${redirectOrigin}/auth/callback?linked=twitter`,
+      },
+    });
+    if (fallbackRes.data?.url && typeof window !== "undefined") {
+      window.location.href = fallbackRes.data.url;
+    }
+    return fallbackRes;
+  }
+
+  if (res.data?.url && typeof window !== "undefined") {
+    window.location.href = res.data.url;
+  }
+
+  return res;
+}
+
+/**
+ * Links Google identity to the currently signed-in user account.
+ */
+export async function linkGoogleIdentity() {
+  if (!supabase) {
+    console.warn("Supabase is not configured with valid credentials.");
+    return { error: new Error("Supabase is not configured yet. Set credentials in .env.local") };
+  }
+
+  const redirectOrigin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
+
+  const res = await supabase.auth.linkIdentity({
+    provider: "google",
+    options: {
+      redirectTo: `${redirectOrigin}/auth/callback?linked=google`,
+    },
+  });
+
+  if (res.data?.url && typeof window !== "undefined") {
+    window.location.href = res.data.url;
+  }
+
+  return res;
+}
+
+/**
  * Signs out current authenticated user
  */
 export async function signOutUser() {

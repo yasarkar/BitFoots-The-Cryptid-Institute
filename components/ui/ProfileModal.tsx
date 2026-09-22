@@ -27,6 +27,8 @@ interface ProfileModalProps {
   onUpdateProfile: (updates: { username?: string; avatarUrl?: string; zcashAddress?: string }) => void;
   onLoginWithGoogle: () => Promise<any>;
   onLoginWithX: () => Promise<any>;
+  onLinkGoogle?: () => Promise<any>;
+  onLinkX?: () => Promise<any>;
 }
 
 // Authentic BitFoot heads from /bitfoot-heads (01 to 18)
@@ -43,6 +45,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   onUpdateProfile,
   onLoginWithGoogle,
   onLoginWithX,
+  onLinkGoogle,
+  onLinkX,
 }) => {
   const [usernameInput, setUsernameInput] = useState<string>("");
   const [avatarUrlInput, setAvatarUrlInput] = useState<string>("");
@@ -186,9 +190,14 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const handleConnectX = async () => {
     try {
       setLinkingAuth("twitter");
-      await onLoginWithX();
-    } catch (e) {
+      if (onLinkX) {
+        await onLinkX();
+      } else {
+        await onLoginWithX();
+      }
+    } catch (e: any) {
       console.error("X linking failed:", e);
+      showErrorMessage(e?.message || "Failed to link X account.");
     } finally {
       setLinkingAuth(null);
     }
@@ -197,9 +206,14 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const handleConnectGoogle = async () => {
     try {
       setLinkingAuth("google");
-      await onLoginWithGoogle();
-    } catch (e) {
+      if (onLinkGoogle) {
+        await onLinkGoogle();
+      } else {
+        await onLoginWithGoogle();
+      }
+    } catch (e: any) {
       console.error("Google linking failed:", e);
+      showErrorMessage(e?.message || "Failed to link Google account.");
     } finally {
       setLinkingAuth(null);
     }
@@ -492,71 +506,82 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               LINKED IDENTITIES & RECOVERY
             </span>
 
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {/* X (Twitter) Account Box */}
-              <div className="flex items-center justify-between rounded-xl border border-[#3a475c]/70 bg-[#0f1216]/90 p-3">
-                <div className="flex items-center space-x-2.5">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#3a475c] bg-black text-white">
-                    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
-                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                    </svg>
+            {(() => {
+              const isTwitterLinked =
+                Boolean(profile.linkedProviders?.some((p) => p === "twitter" || p === "x")) ||
+                profile.authProvider === "twitter";
+              const isGoogleLinked =
+                Boolean(profile.linkedProviders?.includes("google")) ||
+                profile.authProvider === "google";
+
+              return (
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {/* X (Twitter) Account Box */}
+                  <div className="flex items-center justify-between rounded-xl border border-[#3a475c]/70 bg-[#0f1216]/90 p-3">
+                    <div className="flex items-center space-x-2.5">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#3a475c] bg-black text-white">
+                        <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
+                          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                        </svg>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className={`text-[11px] ${isTwitterLinked ? "text-[#7fc98f]" : "text-[#7d8898]"}`}>
+                          {isTwitterLinked ? "Linked & Verified" : "Not Linked"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {isTwitterLinked ? (
+                      <span className="flex items-center gap-1 rounded-md border border-[#7fc98f]/40 bg-[#7fc98f]/10 px-1.5 py-0.5 font-mono text-[9px] text-[#7fc98f]">
+                        <Check className="h-2.5 w-2.5" />
+                        <span>Linked</span>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleConnectX}
+                        disabled={linkingAuth === "twitter"}
+                        className="bitfoots-btn rounded-md border border-[#3a475c] px-1.5 py-0.5 font-mono text-[9px] text-[#ffddcc] hover:border-[#eaba49] hover:text-[#eaba49]"
+                      >
+                        {linkingAuth === "twitter" ? "..." : "Connect"}
+                      </button>
+                    )}
                   </div>
-                  <div className="flex flex-col">
-                    <span className="text-[11px] text-[#7d8898]">
-                      {profile.authProvider === "twitter" ? "Linked & Verified" : "Not Linked"}
-                    </span>
+
+                  {/* Google Account Box */}
+                  <div className="flex items-center justify-between rounded-xl border border-[#3a475c]/70 bg-[#0f1216]/90 p-3">
+                    <div className="flex items-center space-x-2.5">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#3a475c] bg-white/10 text-white">
+                        <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
+                          <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z" />
+                        </svg>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className={`text-[11px] ${isGoogleLinked ? "text-[#7fc98f]" : "text-[#7d8898]"}`}>
+                          {isGoogleLinked ? "Linked & Verified" : "Not Linked"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {isGoogleLinked ? (
+                      <span className="flex items-center gap-1 rounded-md border border-[#7fc98f]/40 bg-[#7fc98f]/10 px-1.5 py-0.5 font-mono text-[9px] text-[#7fc98f]">
+                        <Check className="h-2.5 w-2.5" />
+                        <span>Linked</span>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleConnectGoogle}
+                        disabled={linkingAuth === "google"}
+                        className="bitfoots-btn rounded-md border border-[#3a475c] px-1.5 py-0.5 font-mono text-[9px] text-[#ffddcc] hover:border-[#eaba49] hover:text-[#eaba49]"
+                      >
+                        {linkingAuth === "google" ? "..." : "Connect"}
+                      </button>
+                    )}
                   </div>
                 </div>
-
-                {profile.authProvider === "twitter" ? (
-                  <span className="flex items-center gap-1 rounded-md border border-[#7fc98f]/40 bg-[#7fc98f]/10 px-1.5 py-0.5 font-mono text-[9px] text-[#7fc98f]">
-                    <Check className="h-2.5 w-2.5" />
-                    <span>Linked</span>
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleConnectX}
-                    disabled={linkingAuth === "twitter"}
-                    className="bitfoots-btn rounded-md border border-[#3a475c] px-1.5 py-0.5 font-mono text-[9px] text-[#ffddcc] hover:border-[#eaba49] hover:text-[#eaba49]"
-                  >
-                    {linkingAuth === "twitter" ? "..." : "Connect"}
-                  </button>
-                )}
-              </div>
-
-              {/* Google Account Box */}
-              <div className="flex items-center justify-between rounded-xl border border-[#3a475c]/70 bg-[#0f1216]/90 p-3">
-                <div className="flex items-center space-x-2.5">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#3a475c] bg-white/10 text-white">
-                    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
-                      <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z" />
-                    </svg>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[11px] text-[#7d8898]">
-                      {profile.authProvider === "google" ? "Linked & Verified" : "Not Linked"}
-                    </span>
-                  </div>
-                </div>
-
-                {profile.authProvider === "google" ? (
-                  <span className="flex items-center gap-1 rounded-md border border-[#7fc98f]/40 bg-[#7fc98f]/10 px-1.5 py-0.5 font-mono text-[9px] text-[#7fc98f]">
-                    <Check className="h-2.5 w-2.5" />
-                    <span>Linked</span>
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleConnectGoogle}
-                    disabled={linkingAuth === "google"}
-                    className="bitfoots-btn rounded-md border border-[#3a475c] px-1.5 py-0.5 font-mono text-[9px] text-[#ffddcc] hover:border-[#eaba49] hover:text-[#eaba49]"
-                  >
-                    {linkingAuth === "google" ? "..." : "Connect"}
-                  </button>
-                )}
-              </div>
-            </div>
+              );
+            })()}
           </div>
 
           {/* Feedback messages */}

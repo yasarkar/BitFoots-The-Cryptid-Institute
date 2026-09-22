@@ -5,6 +5,8 @@ import {
   supabase,
   signInWithTwitter,
   signInWithGoogle,
+  linkTwitterIdentity,
+  linkGoogleIdentity,
   signOutUser,
   isSupabaseConfigured,
   fetchHunterProfile,
@@ -23,6 +25,7 @@ export interface HunterProfile {
   isLoggedIn: boolean;
   zcashAddress?: string;
   authProvider?: "google" | "twitter" | "guest";
+  linkedProviders?: ("google" | "twitter" | "x")[];
   unlockedSectors: number[];
 }
 
@@ -70,6 +73,28 @@ function extractAvatar(userMeta: any, fallbackSeed: string): string {
     return userMeta.picture;
   }
   return getDefaultBitfootAvatar(fallbackSeed);
+}
+
+export function extractLinkedProviders(user: any): ("google" | "twitter" | "x")[] {
+  const set = new Set<string>();
+  if (Array.isArray(user?.app_metadata?.providers)) {
+    user.app_metadata.providers.forEach((p: string) => set.add(String(p).toLowerCase()));
+  }
+  if (Array.isArray(user?.identities)) {
+    user.identities.forEach((i: any) => {
+      if (i?.provider) set.add(String(i.provider).toLowerCase());
+    });
+  }
+  const rawProvider = user?.app_metadata?.provider;
+  if (rawProvider) set.add(String(rawProvider).toLowerCase());
+
+  const result: ("google" | "twitter" | "x")[] = [];
+  if (set.has("google")) result.push("google");
+  if (set.has("twitter") || set.has("x")) {
+    result.push("twitter");
+    result.push("x");
+  }
+  return Array.from(new Set(result));
 }
 
 function getStoredClearances(): number[] {
@@ -120,6 +145,7 @@ export function useHunterSession() {
               isLoggedIn: parsed.isLoggedIn ?? Boolean(parsed.username),
               zcashAddress: parsed.zcashAddress || "",
               authProvider: parsed.authProvider || (parsed.isGuest ? "guest" : undefined),
+              linkedProviders: Array.isArray(parsed.linkedProviders) ? parsed.linkedProviders : undefined,
               unlockedSectors:
                 Array.isArray(parsed.unlockedSectors) && parsed.unlockedSectors.length > 0
                   ? Array.from(new Set([...initialClearances, ...parsed.unlockedSectors])).sort(
@@ -168,11 +194,12 @@ export function useHunterSession() {
           const userMeta = session.user.user_metadata;
           const username = extractUsername(userMeta, session.user.id);
           const avatarUrl = extractAvatar(userMeta, username);
+          const linkedProviders = extractLinkedProviders(session.user);
           const rawProvider = session.user.app_metadata?.provider;
           const authProvider =
-            rawProvider === "twitter" || rawProvider === "x"
+            rawProvider === "twitter" || rawProvider === "x" || linkedProviders.includes("twitter")
               ? "twitter"
-              : rawProvider === "google"
+              : rawProvider === "google" || linkedProviders.includes("google")
                 ? "google"
                 : undefined;
 
@@ -192,8 +219,13 @@ export function useHunterSession() {
             avatarUrl: cloudProfile?.x_avatar_url || avatarUrl,
             isGuest: false,
             isLoggedIn: true,
-            zcashAddress: cloudProfile?.zcash_address || (userMeta as any)?.zcash_address || "",
+            zcashAddress:
+              cloudProfile?.zcash_address ||
+              (userMeta as any)?.zcash_address ||
+              activeProfile?.zcashAddress ||
+              "",
             authProvider,
+            linkedProviders,
             unlockedSectors: mergedSectors,
           };
 
@@ -247,11 +279,12 @@ export function useHunterSession() {
           const userMeta = session.user.user_metadata;
           const username = extractUsername(userMeta, session.user.id);
           const avatarUrl = extractAvatar(userMeta, username);
+          const linkedProviders = extractLinkedProviders(session.user);
           const rawProvider = session.user.app_metadata?.provider;
           const authProvider =
-            rawProvider === "twitter" || rawProvider === "x"
+            rawProvider === "twitter" || rawProvider === "x" || linkedProviders.includes("twitter")
               ? "twitter"
-              : rawProvider === "google"
+              : rawProvider === "google" || linkedProviders.includes("google")
                 ? "google"
                 : undefined;
 
@@ -270,8 +303,12 @@ export function useHunterSession() {
             avatarUrl: cloudProfile?.x_avatar_url || avatarUrl,
             isGuest: false,
             isLoggedIn: true,
-            zcashAddress: cloudProfile?.zcash_address || (userMeta as any)?.zcash_address || "",
+            zcashAddress:
+              cloudProfile?.zcash_address ||
+              (userMeta as any)?.zcash_address ||
+              "",
             authProvider,
+            linkedProviders,
             unlockedSectors: mergedSectors,
           };
 
@@ -392,6 +429,20 @@ export function useHunterSession() {
     return await signInWithGoogle();
   }, []);
 
+  const linkX = useCallback(async () => {
+    if (profile.isLoggedIn && !profile.isGuest) {
+      return await linkTwitterIdentity();
+    }
+    return await signInWithTwitter();
+  }, [profile.isLoggedIn, profile.isGuest]);
+
+  const linkGoogle = useCallback(async () => {
+    if (profile.isLoggedIn && !profile.isGuest) {
+      return await linkGoogleIdentity();
+    }
+    return await signInWithGoogle();
+  }, [profile.isLoggedIn, profile.isGuest]);
+
   const logout = useCallback(async () => {
     if (isSupabaseConfigured && supabase) {
       try {
@@ -457,6 +508,8 @@ export function useHunterSession() {
     loading,
     loginWithX,
     loginWithGoogle,
+    linkX,
+    linkGoogle,
     setCustomUsername,
     updateProfile,
     unlockSector,

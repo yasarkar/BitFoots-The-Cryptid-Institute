@@ -54,6 +54,8 @@ export default function GamePage() {
     loading: sessionLoading,
     loginWithX,
     loginWithGoogle,
+    linkX,
+    linkGoogle,
     setCustomUsername,
     updateProfile,
     unlockSector,
@@ -105,6 +107,26 @@ export default function GamePage() {
       } catch {}
     }
   }, [profile]);
+
+  // Listen for OAuth identity linking callbacks (?linked=... or ?auth_error=...)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const linked = params.get("linked");
+      const authError = params.get("auth_error");
+      if (linked) {
+        setBonusNotification(
+          `Identity Linked: ${linked === "google" ? "Google" : "X (Twitter)"} account connected to your hunter profile.`
+        );
+        setTimeout(() => setBonusNotification(null), 7500);
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (authError) {
+        setBonusNotification(`Identity Alert: ${decodeURIComponent(authError)}`);
+        setTimeout(() => setBonusNotification(null), 7500);
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  }, []);
 
   // UI Theme & Modals State
   const {
@@ -1223,6 +1245,8 @@ export default function GamePage() {
         onUpdateProfile={updateProfile}
         onLoginWithGoogle={loginWithGoogle}
         onLoginWithX={loginWithX}
+        onLinkGoogle={linkGoogle}
+        onLinkX={linkX}
       />
 
       <SettingsModal

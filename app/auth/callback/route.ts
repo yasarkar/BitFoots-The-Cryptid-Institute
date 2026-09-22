@@ -6,10 +6,22 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
+  const linked = searchParams.get("linked");
+  const error = searchParams.get("error");
+  const errorDescription = searchParams.get("error_description");
+
   const rawNext = searchParams.get("next") ?? "/";
   // Validate next parameter to prevent open-redirect vulnerabilities
-  const next =
+  const safeNext =
     rawNext.startsWith("/") && !rawNext.startsWith("//") && !rawNext.startsWith("/\\") ? rawNext : "/";
+
+  // If OAuth error occurred (e.g. identity already linked or user cancelled)
+  if (error || errorDescription) {
+    const errorMsg = errorDescription || error || "Authentication failed.";
+    return NextResponse.redirect(
+      `${origin}/?auth_error=${encodeURIComponent(errorMsg)}`
+    );
+  }
 
   if (code) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -21,5 +33,13 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return NextResponse.redirect(`${origin}${next}`);
+  // Preserve identity linking status flag if present
+  if (linked) {
+    const redirectUrl = new URL(safeNext, origin);
+    redirectUrl.searchParams.set("linked", linked);
+    return NextResponse.redirect(redirectUrl.toString());
+  }
+
+  return NextResponse.redirect(`${origin}${safeNext}`);
 }
+

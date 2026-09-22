@@ -54,4 +54,23 @@ describe("GET /auth/callback", () => {
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toBe("https://bitfoots.vercel.app/");
   });
+
+  it("redirects with auth_error when error or error_description is provided", async () => {
+    const req = new NextRequest(
+      "https://bitfoots.vercel.app/auth/callback?error=identity_already_exists&error_description=Identity+is+already+linked+to+another+user"
+    );
+    const res = await GET(req);
+
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toContain("/?auth_error=Identity");
+  });
+
+  it("preserves linked parameter in redirection", async () => {
+    const req = new NextRequest("https://bitfoots.vercel.app/auth/callback?linked=google");
+    const res = await GET(req);
+
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toBe("https://bitfoots.vercel.app/?linked=google");
+  });
 });
+

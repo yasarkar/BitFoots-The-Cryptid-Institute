@@ -169,8 +169,8 @@ BEGIN
   )
   ON CONFLICT (id) DO UPDATE
   SET
-    x_username = EXCLUDED.x_username,
-    x_avatar_url = EXCLUDED.x_avatar_url,
+    x_username = COALESCE(NULLIF(public.profiles.x_username, ''), EXCLUDED.x_username),
+    x_avatar_url = COALESCE(NULLIF(public.profiles.x_avatar_url, ''), EXCLUDED.x_avatar_url),
     is_guest = false,
     updated_at = now();
   RETURN NEW;
