@@ -1,8 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  extractIdentityDetails,
-  resolveActiveAvatar,
-} from "./avatarPriority";
+import { extractIdentityDetails, resolveActiveAvatar } from "./avatarPriority";
 
 describe("avatarPriority", () => {
   const GOOGLE_AVATAR = "https://lh3.googleusercontent.com/a/google-avatar-123";

@@ -32,7 +32,9 @@ export async function fetchHunterProfile(userId: string) {
   try {
     let { data, error } = await supabase
       .from("profiles")
-      .select("id, x_username, x_avatar_url, is_custom_avatar, zcash_address, is_guest, unlocked_sectors, highest_score")
+      .select(
+        "id, x_username, x_avatar_url, is_custom_avatar, zcash_address, is_guest, unlocked_sectors, highest_score"
+      )
       .eq("id", userId)
       .maybeSingle();
 

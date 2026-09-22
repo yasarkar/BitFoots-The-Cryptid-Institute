@@ -79,8 +79,7 @@ export async function POST(req: NextRequest) {
     const zcashAddress = sanitizeZcashAddress(body.zcashAddress);
     const unlockedSectors =
       body.unlockedSectors === undefined ? undefined : sanitizeUnlockedSectors(body.unlockedSectors);
-    const isCustomAvatar =
-      body.isCustomAvatar !== undefined ? Boolean(body.isCustomAvatar) : undefined;
+    const isCustomAvatar = body.isCustomAvatar !== undefined ? Boolean(body.isCustomAvatar) : undefined;
 
     const record: Record<string, unknown> = {
       id: body.userId,

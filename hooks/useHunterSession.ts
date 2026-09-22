@@ -16,10 +16,7 @@ import {
 } from "@/lib/supabaseClient";
 import { gameEventBus } from "@/lib/eventBus";
 import { generateUuid } from "@/lib/uuid";
-import {
-  extractIdentityDetails,
-  resolveActiveAvatar,
-} from "@/lib/avatarPriority";
+import { extractIdentityDetails, resolveActiveAvatar } from "@/lib/avatarPriority";
 
 export interface HunterProfile {
   userId: string;
@@ -141,13 +138,9 @@ async function buildAuthenticatedProfile(
     ? cloudProfile.unlocked_sectors
     : [];
 
-  const mergedSectors = Array.from(new Set([...initialClearances, ...cloudSectors, 1])).sort(
-    (a, b) => a - b
-  );
+  const mergedSectors = Array.from(new Set([...initialClearances, ...cloudSectors, 1])).sort((a, b) => a - b);
 
-  const isCustomAvatar = Boolean(
-    cloudProfile?.is_custom_avatar ?? activeFallback?.isCustomAvatar ?? false
-  );
+  const isCustomAvatar = Boolean(cloudProfile?.is_custom_avatar ?? activeFallback?.isCustomAvatar ?? false);
 
   const resolved = resolveActiveAvatar({
     isCustomAvatar,
@@ -168,10 +161,7 @@ async function buildAuthenticatedProfile(
   }
 
   const effectiveZcash =
-    cloudProfile?.zcash_address ||
-    (userMeta as any)?.zcash_address ||
-    activeFallback?.zcashAddress ||
-    "";
+    cloudProfile?.zcash_address || (userMeta as any)?.zcash_address || activeFallback?.zcashAddress || "";
 
   // If user has a local Zcash address that hasn't made it to cloudProfile yet, sync it to Supabase!
   if (!cloudProfile?.zcash_address && effectiveZcash && isValidUuid(session.user.id)) {
@@ -421,12 +411,7 @@ export function useHunterSession() {
   );
 
   const updateProfile = useCallback(
-    (updates: {
-      username?: string;
-      avatarUrl?: string;
-      isCustomAvatar?: boolean;
-      zcashAddress?: string;
-    }) => {
+    (updates: { username?: string; avatarUrl?: string; isCustomAvatar?: boolean; zcashAddress?: string }) => {
       setProfile((prev) => {
         const nextUsername = updates.username !== undefined ? updates.username.trim() : prev.username;
         const nextAvatar = updates.avatarUrl !== undefined ? updates.avatarUrl : prev.avatarUrl;

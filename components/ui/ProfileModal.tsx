@@ -51,7 +51,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   isOpen,
   onClose,
   profile,
-  isSupabaseConfigured,
   onUpdateProfile,
   onLoginWithGoogle,
   onLoginWithX,
@@ -137,7 +136,15 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         errorTimerRef.current = null;
       }
     };
-  }, [isOpen, profile.username, profile.avatarUrl, profile.isCustomAvatar, profile.zcashAddress, profile.userId, onUpdateProfile]);
+  }, [
+    isOpen,
+    profile.username,
+    profile.avatarUrl,
+    profile.isCustomAvatar,
+    profile.zcashAddress,
+    profile.userId,
+    onUpdateProfile,
+  ]);
 
   if (!isOpen) return null;
 
@@ -358,7 +365,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 }}
               />
               {isCustomAvatarInput && (
-                <span className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-[#eaba49] bg-black text-[#eaba49] shadow">
+                <span className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-[#eaba49] bg-black text-[#eaba49] shadow">
                   <Sparkles className="h-3 w-3" />
                 </span>
               )}
@@ -376,12 +383,15 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     <Sparkles className="h-2.5 w-2.5" />
                     <span>Custom Avatar</span>
                   </span>
-                ) : profile.xAvatarUrl && (avatarUrlInput === profile.xAvatarUrl || avatarUrlInput.includes("twimg")) ? (
+                ) : profile.xAvatarUrl &&
+                  (avatarUrlInput === profile.xAvatarUrl || avatarUrlInput.includes("twimg")) ? (
                   <span className="flex items-center gap-1 rounded-md border border-[#7fc98f]/40 bg-[#7fc98f]/10 px-1.5 py-0.5 font-mono text-[9px] text-[#7fc98f]">
                     <Check className="h-2.5 w-2.5" />
                     <span>X Avatar</span>
                   </span>
-                ) : profile.googleAvatarUrl && (avatarUrlInput === profile.googleAvatarUrl || avatarUrlInput.includes("googleusercontent")) ? (
+                ) : profile.googleAvatarUrl &&
+                  (avatarUrlInput === profile.googleAvatarUrl ||
+                    avatarUrlInput.includes("googleusercontent")) ? (
                   <span className="flex items-center gap-1 rounded-md border border-[#3a475c] bg-white/5 px-1.5 py-0.5 font-mono text-[9px] text-[#ffddcc]">
                     <Check className="h-2.5 w-2.5" />
                     <span>Google Avatar</span>
@@ -411,54 +421,12 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 >
                   <Palette className="h-3 w-3 text-[#eaba49]" />
                   <span>Pick Head (18)</span>
-                  {showGallery ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />}
+                  {showGallery ? (
+                    <ChevronUp className="h-2.5 w-2.5" />
+                  ) : (
+                    <ChevronDown className="h-2.5 w-2.5" />
+                  )}
                 </button>
-
-                {/* Quick select linked X avatar if available */}
-                {profile.xAvatarUrl && (
-                  <button
-                    type="button"
-                    onClick={() => handleSelectOAuthAvatar(profile.xAvatarUrl!, true)}
-                    className={`bitfoots-btn flex items-center gap-1 rounded-md px-2 py-0.5 font-mono text-[10px] transition-all ${
-                      avatarUrlInput === profile.xAvatarUrl
-                        ? "border-[#7fc98f] bg-[#7fc98f]/20 text-[#7fc98f]"
-                        : "hover:border-[#7fc98f]/60 hover:text-[#7fc98f]"
-                    }`}
-                  >
-                    <img
-                      src={profile.xAvatarUrl}
-                      alt="X avatar"
-                      className="h-3 w-3 rounded-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
-                      }}
-                    />
-                    <span>Use X Avatar</span>
-                  </button>
-                )}
-
-                {/* Quick select linked Google avatar if available */}
-                {profile.googleAvatarUrl && (
-                  <button
-                    type="button"
-                    onClick={() => handleSelectOAuthAvatar(profile.googleAvatarUrl!, false)}
-                    className={`bitfoots-btn flex items-center gap-1 rounded-md px-2 py-0.5 font-mono text-[10px] transition-all ${
-                      avatarUrlInput === profile.googleAvatarUrl
-                        ? "border-[#eaba49] bg-[#eaba49]/20 text-[#eaba49]"
-                        : "hover:border-[#eaba49]/60 hover:text-[#eaba49]"
-                    }`}
-                  >
-                    <img
-                      src={profile.googleAvatarUrl}
-                      alt="Google avatar"
-                      className="h-3 w-3 rounded-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
-                      }}
-                    />
-                    <span>Use Google Avatar</span>
-                  </button>
-                )}
 
                 <button
                   type="button"
@@ -518,17 +486,17 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                       title={`BitFoot Head ${headNum}`}
                       className={`group relative flex items-center justify-center rounded-xl p-1 transition-all ${
                         isSelected
-                          ? "border-2 border-[#eaba49] bg-[#eaba49]/25 shadow-md shadow-[#eaba49]/20 scale-105"
-                          : "border border-[#3a475c] bg-[#0f1216] hover:border-[#eaba49]/70 hover:scale-105"
+                          ? "scale-105 border-2 border-[#eaba49] bg-[#eaba49]/25 shadow-md shadow-[#eaba49]/20"
+                          : "border border-[#3a475c] bg-[#0f1216] hover:scale-105 hover:border-[#eaba49]/70"
                       }`}
                     >
                       <img
                         src={head}
                         alt={`Head ${headNum}`}
-                        className="h-8 w-8 sm:h-9 sm:w-9 object-contain"
+                        className="h-8 w-8 object-contain sm:h-9 sm:w-9"
                       />
                       {isSelected && (
-                        <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#eaba49] text-black shadow">
+                        <span className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#eaba49] text-black shadow">
                           <Check className="h-2 w-2 stroke-[3]" />
                         </span>
                       )}
