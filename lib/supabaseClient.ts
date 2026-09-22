@@ -1,14 +1,14 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { isValidUuid } from "./uuid";
+
+export { isValidUuid };
 
 const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseUrl = rawUrl.replace(/\/rest\/v1\/?$/, "").replace(/\/+$/, "");
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
 export const isSupabaseConfigured = Boolean(
-  supabaseUrl &&
-    supabaseAnonKey &&
-    !supabaseUrl.includes("your-project") &&
-    supabaseUrl.startsWith("http")
+  supabaseUrl && supabaseAnonKey && !supabaseUrl.includes("your-project") && supabaseUrl.startsWith("http")
 );
 
 /**
@@ -20,13 +20,8 @@ export const supabase: SupabaseClient | null = isSupabaseConfigured
   : null;
 
 /**
- * Validates whether a string is a valid UUID v4 format
+ * UUID helpers live in `lib/uuid.ts` (single shared implementation).
  */
-export function isValidUuid(str: string): boolean {
-  if (!str || typeof str !== "string") return false;
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(str);
-}
 
 /**
  * Fetches user profile and progress directly from Supabase
@@ -52,34 +47,51 @@ export async function fetchHunterProfile(userId: string) {
   }
 }
 
+export interface HunterProfileSyncPayload {
+  userId: string;
+  username?: string;
+  avatarUrl?: string;
+  zcashAddress?: string;
+  isGuest?: boolean;
+  unlockedSectors?: number[];
+}
+
 /**
- * Saves user clearance progress (unlocked sectors) to Supabase
+ * SEC-3: persists profile fields through the service-role API route.
+ *
+ * The `profiles` RLS policy no longer allows anonymous/guest clients to write
+ * rows (the old `FOR ALL USING (true)` policy let anyone holding the public
+ * anon key overwrite or wipe every profile). `/api/profile` validates the
+ * payload and performs the upsert server side.
  */
-export async function saveHunterProgress(userId: string, unlockedSectors: number[]) {
-  if (!supabase || !isValidUuid(userId)) return false;
+export async function syncHunterProfile(payload: HunterProfileSyncPayload): Promise<boolean> {
+  if (!isValidUuid(payload.userId)) return false;
 
   try {
-    const validSectors = Array.from(new Set([1, ...unlockedSectors.filter((n) => typeof n === "number")])).sort(
-      (a, b) => a - b
-    );
+    const res = await fetch("/api/profile", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
 
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        unlocked_sectors: validSectors,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", userId);
-
-    if (error) {
-      console.warn("Error saving progress to Supabase:", error.message);
+    if (!res.ok) {
+      console.warn("Error syncing hunter profile:", res.status);
       return false;
     }
+
     return true;
   } catch (err) {
-    console.error("saveHunterProgress exception:", err);
+    console.error("syncHunterProfile exception:", err);
     return false;
   }
+}
+
+/**
+ * Saves user clearance progress (unlocked sectors) to Supabase.
+ * Thin wrapper around `syncHunterProfile`, kept for existing call sites.
+ */
+export async function saveHunterProgress(userId: string, unlockedSectors: number[]) {
+  return syncHunterProfile({ userId, unlockedSectors });
 }
 
 /**
@@ -123,8 +135,7 @@ export async function signInWithTwitter() {
     return { error: new Error("Supabase is not configured yet. Set credentials in .env.local") };
   }
 
-  const redirectOrigin =
-    typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
+  const redirectOrigin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
 
   // Attempt modern OAuth 2.0 'x' provider first
   const res = await supabase.auth.signInWithOAuth({
@@ -156,8 +167,7 @@ export async function signInWithGoogle() {
     return { error: new Error("Supabase is not configured yet. Set credentials in .env.local") };
   }
 
-  const redirectOrigin =
-    typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
+  const redirectOrigin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
 
   return await supabase.auth.signInWithOAuth({
     provider: "google",

@@ -39,7 +39,7 @@ class AudioManager {
 
       // Master Gain: controls overall application volume
       this.masterGain = this.ctx.createGain();
-      const normVol = (this.volume / 100);
+      const normVol = this.volume / 100;
       this.masterGain.gain.setValueAtTime(normVol * normVol, this.ctx.currentTime);
       this.masterGain.connect(this.ctx.destination);
 
@@ -74,11 +74,7 @@ class AudioManager {
   /**
    * Updates settings reactively from useGameSettings
    */
-  public updateSettings(settings: {
-    volume: number;
-    soundEnabled: boolean;
-    ambienceEnabled: boolean;
-  }) {
+  public updateSettings(settings: { volume: number; soundEnabled: boolean; ambienceEnabled: boolean }) {
     this.volume = Math.max(0, Math.min(100, settings.volume));
     this.soundEnabled = settings.soundEnabled;
     this.ambienceEnabled = settings.ambienceEnabled;
@@ -129,7 +125,9 @@ class AudioManager {
       const bufferSize = this.ctx.sampleRate * 3;
       const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
       const output = noiseBuffer.getChannelData(0);
-      let b0 = 0, b1 = 0, b2 = 0;
+      let b0 = 0,
+        b1 = 0,
+        b2 = 0;
 
       for (let i = 0; i < bufferSize; i++) {
         const white = Math.random() * 2 - 1;
@@ -378,10 +376,10 @@ class AudioManager {
 
     const now = this.ctx.currentTime;
     const melody = [
-      { f: 440, d: 0.12 },  // A4
+      { f: 440, d: 0.12 }, // A4
       { f: 554.37, d: 0.12 }, // C#5
       { f: 659.25, d: 0.14 }, // E5
-      { f: 880, d: 0.35 },    // A5
+      { f: 880, d: 0.35 }, // A5
     ];
 
     let offset = 0;

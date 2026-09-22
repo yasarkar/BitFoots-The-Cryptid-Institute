@@ -117,7 +117,6 @@ export type GameEvents = {
   AVATAR_CHANGED: AvatarChangedPayload;
 };
 
-
 /**
  * Shared singleton event emitter instance
  */

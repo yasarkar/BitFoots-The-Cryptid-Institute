@@ -1,4 +1,7 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { isValidUuid } from "./uuid";
+
+export { isValidUuid };
 
 const rawUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseUrl = rawUrl.replace(/\/rest\/v1\/?$/, "").replace(/\/+$/, "");
@@ -6,17 +9,14 @@ const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 
 export const isSupabaseAdminConfigured = Boolean(
-  supabaseUrl &&
-    serviceRoleKey &&
-    !supabaseUrl.includes("your-project") &&
-    supabaseUrl.startsWith("http")
+  supabaseUrl && serviceRoleKey && !supabaseUrl.includes("your-project") && supabaseUrl.startsWith("http")
 );
 
 export const isSupabaseAnyConfigured = Boolean(
   supabaseUrl &&
-    (serviceRoleKey || anonKey) &&
-    !supabaseUrl.includes("your-project") &&
-    supabaseUrl.startsWith("http")
+  (serviceRoleKey || anonKey) &&
+  !supabaseUrl.includes("your-project") &&
+  supabaseUrl.startsWith("http")
 );
 
 /**
@@ -32,22 +32,17 @@ export const supabaseAdmin: SupabaseClient | null = isSupabaseAdminConfigured
       },
     })
   : isSupabaseAnyConfigured
-  ? createClient(supabaseUrl, anonKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    })
-  : null;
+    ? createClient(supabaseUrl, anonKey, {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      })
+    : null;
 
 /**
- * Validates whether a string is a valid UUID
+ * UUID helpers live in `lib/uuid.ts` (single shared implementation).
  */
-export function isValidUuid(str: string): boolean {
-  if (!str || typeof str !== "string") return false;
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(str);
-}
 
 /**
  * In-Memory Development Store fallback when Supabase credentials are not yet set
@@ -65,7 +60,10 @@ export interface MockLeaderboardEntry {
 }
 
 const globalDevStore: {
-  profiles: Map<string, { x_username: string; x_avatar_url: string; is_guest: boolean; unlocked_sectors: number[] }>;
+  profiles: Map<
+    string,
+    { x_username: string; x_avatar_url: string; is_guest: boolean; unlocked_sectors: number[] }
+  >;
   scores: Array<{
     user_id: string;
     chapter: number;
