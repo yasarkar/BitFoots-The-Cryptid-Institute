@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   User,
   X,
@@ -15,6 +15,9 @@ import {
 } from "lucide-react";
 import { HunterProfile } from "@/hooks/useHunterSession";
 import { ExportCardModal } from "./ExportCardModal";
+
+// 7-8 second timeout constant for user feedback notifications
+const NOTIFICATION_TIMEOUT_MS = 7500;
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -48,8 +51,13 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const [copiedZec, setCopiedZec] = useState<boolean>(false);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [showValidNotice, setShowValidNotice] = useState<boolean>(false);
   const [linkingAuth, setLinkingAuth] = useState<string | null>(null);
   const [showExportModal, setShowExportModal] = useState<boolean>(false);
+
+  const validTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const errorTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -58,10 +66,25 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       setZcashInput(profile.zcashAddress || "");
       setSaveSuccess(false);
       setErrorMsg(null);
+      setShowValidNotice(false);
       setCopiedId(false);
       setCopiedZec(false);
       setLinkingAuth(null);
     }
+    return () => {
+      if (validTimerRef.current) {
+        clearTimeout(validTimerRef.current);
+        validTimerRef.current = null;
+      }
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      if (errorTimerRef.current) {
+        clearTimeout(errorTimerRef.current);
+        errorTimerRef.current = null;
+      }
+    };
   }, [isOpen, profile.username, profile.avatarUrl, profile.zcashAddress]);
 
   if (!isOpen) return null;
@@ -91,6 +114,40 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   };
 
   const zcashValidation = getZcashStatus();
+
+  const triggerValidNotice = () => {
+    setShowValidNotice(true);
+    if (validTimerRef.current) clearTimeout(validTimerRef.current);
+    validTimerRef.current = setTimeout(() => {
+      setShowValidNotice(false);
+    }, NOTIFICATION_TIMEOUT_MS);
+  };
+
+  const showErrorMessage = (msg: string) => {
+    setErrorMsg(msg);
+    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    errorTimerRef.current = setTimeout(() => {
+      setErrorMsg(null);
+    }, NOTIFICATION_TIMEOUT_MS);
+  };
+
+  const handleZcashChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setZcashInput(val);
+    setErrorMsg(null);
+    setSaveSuccess(false);
+
+    const clean = val.trim();
+    if (clean.startsWith("u1") && clean.length >= 50) {
+      triggerValidNotice();
+    } else {
+      setShowValidNotice(false);
+      if (validTimerRef.current) {
+        clearTimeout(validTimerRef.current);
+        validTimerRef.current = null;
+      }
+    }
+  };
 
   // Randomize Avatar using authentic BitFoot heads (01-18)
   const handleRandomizeAvatar = () => {
@@ -140,21 +197,21 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     e.preventDefault();
     const cleanName = usernameInput.trim();
     if (!cleanName) {
-      setErrorMsg("Call-sign cannot be blank.");
+      showErrorMessage("Call-sign cannot be blank.");
       return;
     }
     if (cleanName.length < 3) {
-      setErrorMsg("Call-sign must be at least 3 characters.");
+      showErrorMessage("Call-sign must be at least 3 characters.");
       return;
     }
     if (cleanName.length > 24) {
-      setErrorMsg("Call-sign must not exceed 24 characters.");
+      showErrorMessage("Call-sign must not exceed 24 characters.");
       return;
     }
 
     const cleanZcash = zcashInput.trim();
     if (cleanZcash && !cleanZcash.startsWith("u1")) {
-      setErrorMsg("Zcash address must start with 'u1'.");
+      showErrorMessage("Zcash address must start with 'u1'.");
       return;
     }
 
@@ -166,7 +223,15 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
     setSaveSuccess(true);
     setErrorMsg(null);
-    setTimeout(() => setSaveSuccess(false), 3000);
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      setSaveSuccess(false);
+    }, NOTIFICATION_TIMEOUT_MS);
+
+    // If a valid address is present, also flash the 7-8s valid notice
+    if (cleanZcash && cleanZcash.startsWith("u1") && cleanZcash.length >= 50) {
+      triggerValidNotice();
+    }
   };
 
   return (
@@ -325,14 +390,10 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               <input
                 type="text"
                 value={zcashInput}
-                onChange={(e) => {
-                  setZcashInput(e.target.value);
-                  setErrorMsg(null);
-                  setSaveSuccess(false);
-                }}
+                onChange={handleZcashChange}
                 placeholder="u1... (Unified Shielded Address for grants & airdrops)"
                 className={`w-full rounded-xl border bg-[#0f1216] px-3.5 py-2 pr-8 font-mono text-xs text-[#ffddcc] outline-none transition-colors ${
-                  zcashValidation.status === "valid"
+                  showValidNotice
                     ? "border-[#7fc98f]/80 focus:border-[#7fc98f]"
                     : zcashValidation.status === "invalid_prefix"
                       ? "border-[#e07a6b]/80 focus:border-[#e07a6b]"
@@ -340,7 +401,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 }`}
               />
               <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2">
-                {zcashValidation.status === "valid" && <Check className="h-4 w-4 text-[#7fc98f]" />}
+                {showValidNotice && <Check className="h-4 w-4 text-[#7fc98f] animate-in fade-in duration-150" />}
                 {zcashValidation.status === "invalid_prefix" && (
                   <AlertCircle className="h-4 w-4 text-[#e07a6b]" />
                 )}
@@ -348,19 +409,25 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             </div>
 
             {/* Validation Feedback & Privacy Lore Callout */}
-            <div className="flex flex-col gap-1">
-              <p
-                className={`flex items-center gap-1 font-mono text-[11px] ${
-                  zcashValidation.status === "valid"
-                    ? "text-[#7fc98f]"
-                    : zcashValidation.status === "invalid_prefix"
-                      ? "text-[#e07a6b]"
-                      : "text-[#7d8898]"
-                }`}
-              >
-                {zcashValidation.status === "valid" && <ShieldCheck className="h-3 w-3" />}
-                {zcashValidation.message}
-              </p>
+            <div className="flex flex-col gap-1 min-h-[18px]">
+              {showValidNotice ? (
+                <p className="flex items-center gap-1 font-mono text-[11px] text-[#7fc98f] animate-in fade-in duration-200">
+                  <ShieldCheck className="h-3 w-3" />
+                  <span>Valid Zcash Shielded Address</span>
+                </p>
+              ) : zcashValidation.status === "invalid_prefix" ? (
+                <p className="flex items-center gap-1 font-mono text-[11px] text-[#e07a6b] animate-in fade-in duration-200">
+                  {zcashValidation.message}
+                </p>
+              ) : zcashValidation.status === "too_short" ? (
+                <p className="flex items-center gap-1 font-mono text-[11px] text-[#7d8898]">
+                  {zcashValidation.message}
+                </p>
+              ) : (
+                <p className="flex items-center gap-1 font-mono text-[11px] text-[#7d8898]">
+                  Optional: Zcash Unified Address (u1...)
+                </p>
+              )}
             </div>
           </div>
 
@@ -440,13 +507,13 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
           {/* Feedback messages */}
           {errorMsg && (
-            <p className="flex items-center gap-1 rounded-lg border border-red-500/30 bg-red-950/20 p-2 font-mono text-xs text-[#e07a6b]">
+            <p className="flex items-center gap-1 rounded-lg border border-red-500/30 bg-red-950/20 p-2 font-mono text-xs text-[#e07a6b] animate-in fade-in duration-200">
               <AlertCircle className="h-3.5 w-3.5 shrink-0" />
               <span>{errorMsg}</span>
             </p>
           )}
           {saveSuccess && (
-            <p className="flex items-center gap-1 rounded-lg border border-[#7fc98f]/40 bg-[#7fc98f]/15 p-2 font-mono text-xs text-[#7fc98f]">
+            <p className="flex items-center gap-1 rounded-lg border border-[#7fc98f]/40 bg-[#7fc98f]/15 p-2 font-mono text-xs text-[#7fc98f] animate-in fade-in duration-200">
               <Check className="h-3.5 w-3.5 shrink-0" />
               <span>Hunter Dossier and Shielded Credentials saved successfully!</span>
             </p>
