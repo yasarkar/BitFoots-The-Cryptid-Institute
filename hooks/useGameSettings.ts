@@ -46,8 +46,7 @@ export function useGameSettings() {
         soundEnabled: soundStored !== null ? soundStored === "true" : DEFAULT_SETTINGS.soundEnabled,
         ambienceEnabled:
           ambienceStored !== null ? ambienceStored === "true" : DEFAULT_SETTINGS.ambienceEnabled,
-        highContrast:
-          contrastStored !== null ? contrastStored === "true" : DEFAULT_SETTINGS.highContrast,
+        highContrast: contrastStored !== null ? contrastStored === "true" : DEFAULT_SETTINGS.highContrast,
         volume:
           volumeStored !== null
             ? Math.max(0, Math.min(100, parseInt(volumeStored, 10)))
@@ -61,38 +60,35 @@ export function useGameSettings() {
   }, []);
 
   // Update specific setting and persist immediately to localStorage
-  const updateSetting = useCallback(
-    <K extends keyof GameSettings>(key: K, value: GameSettings[K]) => {
-      setSettings((prev) => {
-        const next = { ...prev, [key]: value };
-        if (typeof window !== "undefined") {
-          try {
-            switch (key) {
-              case "crtEnabled":
-                localStorage.setItem(STORAGE_KEYS.CRT, String(value));
-                break;
-              case "soundEnabled":
-                localStorage.setItem(STORAGE_KEYS.SOUND, String(value));
-                break;
-              case "ambienceEnabled":
-                localStorage.setItem(STORAGE_KEYS.AMBIENCE, String(value));
-                break;
-              case "highContrast":
-                localStorage.setItem(STORAGE_KEYS.CONTRAST, String(value));
-                break;
-              case "volume":
-                localStorage.setItem(STORAGE_KEYS.VOLUME, String(value));
-                break;
-            }
-          } catch (err) {
-            console.error(`Failed to save ${key} to localStorage:`, err);
+  const updateSetting = useCallback(<K extends keyof GameSettings>(key: K, value: GameSettings[K]) => {
+    setSettings((prev) => {
+      const next = { ...prev, [key]: value };
+      if (typeof window !== "undefined") {
+        try {
+          switch (key) {
+            case "crtEnabled":
+              localStorage.setItem(STORAGE_KEYS.CRT, String(value));
+              break;
+            case "soundEnabled":
+              localStorage.setItem(STORAGE_KEYS.SOUND, String(value));
+              break;
+            case "ambienceEnabled":
+              localStorage.setItem(STORAGE_KEYS.AMBIENCE, String(value));
+              break;
+            case "highContrast":
+              localStorage.setItem(STORAGE_KEYS.CONTRAST, String(value));
+              break;
+            case "volume":
+              localStorage.setItem(STORAGE_KEYS.VOLUME, String(value));
+              break;
           }
+        } catch (err) {
+          console.error(`Failed to save ${key} to localStorage:`, err);
         }
-        return next;
-      });
-    },
-    []
-  );
+      }
+      return next;
+    });
+  }, []);
 
   // Setters for convenience
   const setCrtEnabled = useCallback(
