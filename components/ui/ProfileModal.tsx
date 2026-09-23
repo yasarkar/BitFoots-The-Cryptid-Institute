@@ -15,6 +15,7 @@ import {
   Palette,
   ChevronDown,
   ChevronUp,
+  Info,
 } from "lucide-react";
 import { HunterProfile } from "@/hooks/useHunterSession";
 import { ExportCardModal } from "./ExportCardModal";
@@ -616,7 +617,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 </p>
               ) : zcashValidation.status === "valid" ? (
                 <p className="flex items-center gap-1 font-mono text-[11px] text-[#aab6c9]">
-                  <ShieldCheck className="h-3 w-3 text-[#7fc98f]" />
+                  <Info className="h-3 w-3 text-[#7fc98f]" />
                   <span>Shielded Address configured for research grants & confidential airdrops</span>
                 </p>
               ) : zcashValidation.status === "invalid_prefix" ? (

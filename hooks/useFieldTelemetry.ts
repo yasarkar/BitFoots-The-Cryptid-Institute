@@ -33,7 +33,8 @@ function formatRelativeTime(dateStr: string): string {
 export function useFieldTelemetry(options: UseFieldTelemetryOptions = {}) {
   const { currentUsername, currentUserId } = options;
 
-  const [onlineHunters, setOnlineHunters] = useState<number>(38);
+  const [onlineHunters, setOnlineHunters] = useState<number>(1);
+  const isPresenceLiveRef = useRef<boolean>(false);
   const [btcBlock, setBtcBlock] = useState<string>("968,034");
   const [zkStatus, setZkStatus] = useState<string>("ZK OK");
   const [apexRecord, setApexRecord] = useState<{
@@ -107,8 +108,8 @@ export function useFieldTelemetry(options: UseFieldTelemetryOptions = {}) {
           if (data.recentSightings && data.recentSightings.length > 0) {
             setSightings(data.recentSightings);
           }
-          if (data.onlineHuntersEstimate) {
-            setOnlineHunters((prev) => Math.max(prev, data.onlineHuntersEstimate));
+          if (!isPresenceLiveRef.current && data.onlineHuntersEstimate) {
+            setOnlineHunters(data.onlineHuntersEstimate);
           }
           setIsLive(Boolean(data.isLiveSupabase));
           setLastPacketTime(new Date());
@@ -182,35 +183,54 @@ export function useFieldTelemetry(options: UseFieldTelemetryOptions = {}) {
     let presenceChannel: any = null;
     let scoresChannel: any = null;
     let broadcastChannel: any = null;
-    let driftInterval: any = null;
-
-    const baseCount = 36;
-
     if (isSupabaseConfigured && supabase) {
       try {
+        // Unique tab session key so multiple browser tabs/devices are accurately counted as active recon sessions
+        let tabSessionKey = "session_tab";
+        if (typeof window !== "undefined") {
+          let stored = sessionStorage.getItem("bitfoot_hunter_tab_id");
+          if (!stored) {
+            stored = `tab_${Math.random().toString(36).substring(2, 8)}_${Date.now().toString(36)}`;
+            sessionStorage.setItem("bitfoot_hunter_tab_id", stored);
+          }
+          tabSessionKey = stored;
+        }
+
         const guestTag =
-          currentUsername || `hunter_${(currentUserId || Math.random().toString(36)).substring(0, 6)}`;
+          currentUsername || `hunter_${(currentUserId || tabSessionKey).substring(0, 6)}`;
 
         // A. Presence Channel (Active Hunters)
         presenceChannel = supabase.channel("online-hunters", {
-          config: { presence: { key: guestTag } },
+          config: { presence: { key: tabSessionKey } },
         });
 
+        const syncPresenceCount = () => {
+          const state = presenceChannel.presenceState();
+          const totalSessions = Object.keys(state).reduce((sum: number, key: string) => {
+            const list = state[key];
+            return sum + (Array.isArray(list) ? list.length : 1);
+          }, 0);
+
+          const liveCount = Math.max(1, totalSessions);
+          setOnlineHunters(liveCount);
+          setIsLive(true);
+          isPresenceLiveRef.current = true;
+          setLastPacketTime(new Date());
+        };
+
         presenceChannel
-          .on("presence", { event: "sync" }, () => {
-            const state = presenceChannel.presenceState();
-            const realCount = Object.keys(state).length;
-            setOnlineHunters(baseCount + Math.max(1, realCount));
-            setIsLive(true);
-            setLastPacketTime(new Date());
-          })
+          .on("presence", { event: "sync" }, syncPresenceCount)
+          .on("presence", { event: "join" }, syncPresenceCount)
+          .on("presence", { event: "leave" }, syncPresenceCount)
           .subscribe(async (status: string) => {
             if (status === "SUBSCRIBED") {
               await presenceChannel.track({
                 username: guestTag,
+                userId: currentUserId || null,
                 online_at: new Date().toISOString(),
               });
               setIsLive(true);
+              isPresenceLiveRef.current = true;
             }
           });
 
@@ -294,17 +314,12 @@ export function useFieldTelemetry(options: UseFieldTelemetryOptions = {}) {
         console.warn("Telemetry realtime setup warning:", err);
       }
     } else {
-      // Offline / Local organic drift
-      driftInterval = setInterval(() => {
-        setOnlineHunters((prev) => {
-          const delta = Math.floor(Math.random() * 3) - 1; // -1, 0, or +1
-          return Math.min(48, Math.max(34, prev + delta));
-        });
-      }, 7000);
+      // Local standalone mode (at least the current operative)
+      setOnlineHunters(1);
     }
 
     return () => {
-      if (driftInterval) clearInterval(driftInterval);
+      isPresenceLiveRef.current = false;
       if (presenceChannel && supabase) supabase.removeChannel(presenceChannel);
       if (scoresChannel && supabase) supabase.removeChannel(scoresChannel);
       if (broadcastChannel && supabase) supabase.removeChannel(broadcastChannel);

@@ -213,9 +213,24 @@ export async function GET() {
     // 4. BTC Block Height
     const btcBlock = await fetchCurrentBtcBlock();
 
-    // 5. Estimated Online Hunters
-    // Base active field agents + dynamic variance
-    const onlineHuntersEstimate = 38 + Math.floor(new Date().getUTCMinutes() % 10);
+    // 5. Active Hunters Baseline from Database (Operatives active in last 24h, minimum 1)
+    let onlineHuntersEstimate = 1;
+    if (isLiveSupabase && supabaseAdmin) {
+      try {
+        const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const { data: activeRows } = await supabaseAdmin
+          .from("chapter_scores")
+          .select("user_id")
+          .gte("created_at", since24h);
+
+        if (activeRows && activeRows.length > 0) {
+          const uniqueUsers = new Set(activeRows.map((r: any) => r.user_id));
+          onlineHuntersEstimate = Math.max(1, uniqueUsers.size);
+        }
+      } catch {
+        onlineHuntersEstimate = 1;
+      }
+    }
 
     const responseData: TelemetryData = {
       success: true,

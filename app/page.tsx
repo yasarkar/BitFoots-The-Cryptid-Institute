@@ -638,9 +638,11 @@ export default function GamePage() {
         onGoHome={handleGoHome}
       />
 
-      {/* Background Page Content (blurred when Entry Gate Modal is active) */}
-      <div
-        id="game-viewport-wrapper"
+      {/* 2. Main Game & Telemetry Stage */}
+      <div className="relative flex w-full flex-1 flex-col items-center justify-center">
+        {/* Background Page Content (blurred when Entry Gate Modal is active) */}
+        <div
+          id="game-viewport-wrapper"
         className={`z-10 flex w-full max-w-6xl flex-1 flex-col items-center justify-between px-2 py-2 transition-all duration-700 ease-out sm:px-4 sm:py-3 ${
           isEntryGateOpen
             ? "pointer-events-none scale-[0.985] select-none blur-lg brightness-[0.40] filter"
@@ -1231,7 +1233,7 @@ export default function GamePage() {
         </div>
       </div>
 
-      {/* Sector Roulette Dial (Fixed to Far Right Edge of Screen) */}
+      {/* Sector Roulette Dial (Anchored to Game Area - Right Edge) */}
       <SectorRoulette
         activeChapter={activeChapter}
         onSelectChapter={handleSwitchChapter}
@@ -1239,6 +1241,7 @@ export default function GamePage() {
         unlockedSectors={Array.from(new Set([...(profile.unlockedSectors || [1]), activeChapter]))}
         isHoverDisabled={isGameActive}
       />
+    </div>
 
       {/* 4. The Cryptid Institute // Global Site Footer */}
       <Footer

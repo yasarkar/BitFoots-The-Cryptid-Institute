@@ -145,6 +145,7 @@ interface SectorRouletteProps {
   isBlurred?: boolean;
   unlockedSectors?: number[];
   isHoverDisabled?: boolean;
+  className?: string;
 }
 
 interface DialNotice {
@@ -158,6 +159,7 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
   isBlurred = false,
   unlockedSectors = [1],
   isHoverDisabled = false,
+  className = "",
 }) => {
   const [isHovered, setIsHovered] = useState<boolean>(false);
   const [isMobileOpen, setIsMobileOpen] = useState<boolean>(false);
@@ -1076,13 +1078,13 @@ export const SectorRoulette: React.FC<SectorRouletteProps> = ({
         aria-label="Sector roulette dial instrument"
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        className={`duration-400 fixed right-0 top-1/2 z-30 hidden -translate-y-1/2 select-none items-center justify-end transition-all ease-out md:flex ${
+        className={`duration-400 absolute right-0 top-1/2 z-30 hidden -translate-y-1/2 select-none items-center justify-end transition-all ease-out md:flex ${
           isExpanded
             ? "h-[520px] w-[260px] drop-shadow-[-22px_0_44px_rgba(0,0,0,0.95)]"
             : "h-[370px] w-[185px] drop-shadow-[-12px_0_24px_rgba(0,0,0,0.85)]"
         } ${isHoverDisabled ? "pointer-events-none cursor-default" : "cursor-pointer"} ${
           isBlurred ? "brightness-25 pointer-events-none blur-md filter" : ""
-        }`}
+        } ${className}`}
       >
         <div className="relative flex h-full w-full items-center justify-end overflow-visible">
           {/* Desktop Holographic Dossier HUD Slip (Sits directly left of the dial) */}

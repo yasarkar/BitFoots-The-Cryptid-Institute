@@ -287,9 +287,16 @@ export const Footer: React.FC<FooterProps> = ({
                   <Activity className="h-3 w-3 text-[#7fc98f]" />
                   ACTIVE IN FIELD
                 </span>
-                <span className="flex items-center gap-1.5 font-bold tracking-wider text-[#7fc98f]">
+                <span
+                  className="flex items-center gap-1.5 font-bold tracking-wider text-[#7fc98f]"
+                  title={
+                    isLive
+                      ? `${onlineHunters} active operative(s) connected via live telemetry grid`
+                      : "Local Recon Operative"
+                  }
+                >
                   <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[#7fc98f]" />
-                  {onlineHunters} HUNTERS
+                  {onlineHunters} {onlineHunters === 1 ? "HUNTER" : "HUNTERS"}
                 </span>
               </div>
 
