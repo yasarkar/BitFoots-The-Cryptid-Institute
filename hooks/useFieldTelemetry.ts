@@ -196,8 +196,7 @@ export function useFieldTelemetry(options: UseFieldTelemetryOptions = {}) {
           tabSessionKey = stored;
         }
 
-        const guestTag =
-          currentUsername || `hunter_${(currentUserId || tabSessionKey).substring(0, 6)}`;
+        const guestTag = currentUsername || `hunter_${(currentUserId || tabSessionKey).substring(0, 6)}`;
 
         // A. Presence Channel (Active Hunters)
         presenceChannel = supabase.channel("online-hunters", {
