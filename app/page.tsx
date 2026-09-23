@@ -5,6 +5,7 @@ import GameContainer from "@/components/game/GameContainer";
 import { LeaderboardModal } from "@/components/ui/LeaderboardModal";
 import { VirtualControls } from "@/components/ui/VirtualControls";
 import { CryptidDossierModal } from "@/components/ui/CryptidDossierModal";
+import { DisclaimerModal } from "@/components/ui/DisclaimerModal";
 import { EntryGateModal } from "@/components/ui/EntryGateModal";
 import { ProfileModal } from "@/components/ui/ProfileModal";
 import { SettingsModal } from "@/components/ui/SettingsModal";
@@ -85,19 +86,22 @@ export default function GamePage() {
   // Game Started / Standby State (Timer only starts when user clicks Start Expedition)
   const [isGameStarted, setIsGameStarted] = useState<boolean>(false);
 
-  // Entry Gate Modal State (only opens if user has not yet signed in / set call-sign)
+  // Mandatory Initial Disclaimer Modal State (shown before start and login screens)
+  const [isDisclaimerOpen, setIsDisclaimerOpen] = useState<boolean>(true);
+
+  // Entry Gate Modal State (only opens if user has not yet signed in / set call-sign, after disclaimer)
   const [isEntryGateOpen, setIsEntryGateOpen] = useState<boolean>(false);
 
-  // Synchronize modal state with session authentication
+  // Synchronize modal state with session authentication (waits for disclaimer acknowledgment)
   useEffect(() => {
     if (!sessionLoading) {
-      if (!profile.isLoggedIn) {
+      if (!isDisclaimerOpen && !profile.isLoggedIn) {
         setIsEntryGateOpen(true);
       } else {
         setIsEntryGateOpen(false);
       }
     }
-  }, [sessionLoading, profile.isLoggedIn]);
+  }, [sessionLoading, profile.isLoggedIn, isDisclaimerOpen]);
 
   // Synchronize active hunter profile to localStorage for Phaser scenes & API routes
   useEffect(() => {
@@ -467,6 +471,14 @@ export default function GamePage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isGameStarted, loreModalData, finishedData, handleRestart]);
 
+  // User Action: Acknowledge Disclaimer and Proceed
+  const handleProceedDisclaimer = () => {
+    setIsDisclaimerOpen(false);
+    if (!profile.isLoggedIn) {
+      setIsEntryGateOpen(true);
+    }
+  };
+
   // User Actions: Start Expedition
   const handleStartGame = () => {
     audioManager.playGameStart();
@@ -640,11 +652,11 @@ export default function GamePage() {
 
       {/* 2. Main Game & Telemetry Stage */}
       <div className="relative flex w-full flex-1 flex-col items-center justify-center">
-        {/* Background Page Content (blurred when Entry Gate Modal is active) */}
+        {/* Background Page Content (blurred when Disclaimer or Entry Gate Modal is active) */}
         <div
           id="game-viewport-wrapper"
           className={`z-10 flex w-full max-w-6xl flex-1 flex-col items-center justify-between px-2 py-2 transition-all duration-700 ease-out sm:px-4 sm:py-3 ${
-            isEntryGateOpen
+            isDisclaimerOpen || isEntryGateOpen
               ? "pointer-events-none scale-[0.985] select-none blur-lg brightness-[0.40] filter"
               : "scale-100 brightness-100 filter-none"
           }`}
@@ -1239,7 +1251,7 @@ export default function GamePage() {
         <SectorRoulette
           activeChapter={activeChapter}
           onSelectChapter={handleSwitchChapter}
-          isBlurred={isEntryGateOpen}
+          isBlurred={isDisclaimerOpen || isEntryGateOpen}
           unlockedSectors={Array.from(new Set([...(profile.unlockedSectors || [1]), activeChapter]))}
           isHoverDisabled={isGameActive}
         />
@@ -1256,6 +1268,7 @@ export default function GamePage() {
           setIsDossierOpen(true);
         }}
         onOpenLogin={() => setIsEntryGateOpen(true)}
+        onOpenDisclaimer={() => setIsDisclaimerOpen(true)}
         onSwitchChapter={handleSwitchChapter}
         activeChapter={activeChapter}
         unlockedSectors={profile.unlockedSectors}
@@ -1294,6 +1307,12 @@ export default function GamePage() {
         onToggleContrast={setHighContrast}
         onChangeVolume={setVolume}
         onResetSettings={resetSettings}
+      />
+
+      {/* 5.5. Mandatory Initial Notice & Disclaimer Window */}
+      <DisclaimerModal
+        isOpen={isDisclaimerOpen}
+        onProceed={handleProceedDisclaimer}
       />
 
       {/* 6. Entry Gate Onboarding / Authentication Window */}

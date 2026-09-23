@@ -17,6 +17,7 @@ interface FooterProps {
   onOpenLeaderboard?: () => void;
   onOpenAbout?: () => void;
   onOpenLogin?: () => void;
+  onOpenDisclaimer?: () => void;
   onSwitchChapter: (chapterId: 1 | 2 | 3) => void;
   activeChapter: 1 | 2 | 3;
   unlockedSectors?: number[];
@@ -28,6 +29,7 @@ export const Footer: React.FC<FooterProps> = ({
   onOpenLeaderboard,
   onOpenAbout,
   onOpenLogin,
+  onOpenDisclaimer,
   onSwitchChapter,
   activeChapter,
   unlockedSectors = [1],
@@ -408,6 +410,19 @@ export const Footer: React.FC<FooterProps> = ({
           <div className="flex flex-wrap items-center gap-3 sm:gap-2">
             <span className="hidden text-[#3a475c] md:inline">•</span>
             <span className="hidden text-[#ffddcc]/60 lg:inline">ZCASH SHIELDED POOL + BITCOIN ORDINALS</span>
+            {onOpenDisclaimer && (
+              <>
+                <span className="text-[#3a475c]">•</span>
+                <button
+                  type="button"
+                  id="footer-open-disclaimer-btn"
+                  onClick={onOpenDisclaimer}
+                  className="text-[#eaba49] underline underline-offset-2 transition-colors hover:text-[#f3c85f]"
+                >
+                  Notice & Disclaimer
+                </button>
+              </>
+            )}
             <span className="text-[#3a475c]">•</span>
             <button
               type="button"
