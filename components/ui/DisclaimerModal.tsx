@@ -1,15 +1,16 @@
 "use client";
 
 import React from "react";
-import { ShieldAlert, ArrowRight, Info, Sparkles } from "lucide-react";
+import { ShieldAlert, ArrowRight, Info, Sparkles, X as CloseIcon } from "lucide-react";
 import { audioManager } from "@/lib/audioManager";
 
 interface DisclaimerModalProps {
   isOpen: boolean;
   onProceed: () => void;
+  onClose?: () => void;
 }
 
-export const DisclaimerModal: React.FC<DisclaimerModalProps> = ({ isOpen, onProceed }) => {
+export const DisclaimerModal: React.FC<DisclaimerModalProps> = ({ isOpen, onProceed, onClose }) => {
   if (!isOpen) return null;
 
   const handleProceedClick = () => {
@@ -28,6 +29,19 @@ export const DisclaimerModal: React.FC<DisclaimerModalProps> = ({ isOpen, onProc
         id="disclaimer-modal-card"
         className="bitfoots-glass-card relative my-auto w-full max-w-lg overflow-hidden rounded-2xl border border-[#eaba49]/85 p-6 text-[#aab6c9] shadow-2xl sm:p-9"
       >
+        {/* Optional Close Button */}
+        {onClose && (
+          <button
+            id="disclaimer-modal-close-btn"
+            type="button"
+            onClick={onClose}
+            className="absolute right-4 top-4 z-20 rounded-lg border border-[#3a475c] bg-[#0f1216] p-2 text-[#7d8898] transition-colors hover:bg-[#1a1f26] hover:text-[#eaba49]"
+            aria-label="Close Disclaimer"
+          >
+            <CloseIcon className="h-4 w-4" />
+          </button>
+        )}
+
         {/* Glowing top accent line */}
         <div className="absolute left-0 right-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-[#eaba49] to-transparent" />
 

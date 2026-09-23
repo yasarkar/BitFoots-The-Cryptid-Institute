@@ -86,22 +86,44 @@ export default function GamePage() {
   // Game Started / Standby State (Timer only starts when user clicks Start Expedition)
   const [isGameStarted, setIsGameStarted] = useState<boolean>(false);
 
-  // Mandatory Initial Disclaimer Modal State (shown before start and login screens)
-  const [isDisclaimerOpen, setIsDisclaimerOpen] = useState<boolean>(true);
+  // Storage key for mandatory community notice & disclaimer
+  const DISCLAIMER_STORAGE_KEY = "bitfoot_disclaimer_accepted";
+
+  // Mandatory Initial Disclaimer Modal State (shown only once when the page is first opened)
+  const [isDisclaimerOpen, setIsDisclaimerOpen] = useState<boolean>(false);
+  const [hasCheckedDisclaimer, setHasCheckedDisclaimer] = useState<boolean>(false);
+
+  // Check on initial page load if disclaimer has already been acknowledged
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const accepted =
+          localStorage.getItem(DISCLAIMER_STORAGE_KEY) === "true" ||
+          sessionStorage.getItem(DISCLAIMER_STORAGE_KEY) === "true";
+        if (!accepted) {
+          setIsDisclaimerOpen(true);
+        }
+      } catch {
+        setIsDisclaimerOpen(true);
+      } finally {
+        setHasCheckedDisclaimer(true);
+      }
+    }
+  }, []);
 
   // Entry Gate Modal State (only opens if user has not yet signed in / set call-sign, after disclaimer)
   const [isEntryGateOpen, setIsEntryGateOpen] = useState<boolean>(false);
 
-  // Synchronize modal state with session authentication (waits for disclaimer acknowledgment)
+  // Synchronize modal state with session authentication (waits for disclaimer check and acknowledgment)
   useEffect(() => {
-    if (!sessionLoading) {
+    if (!sessionLoading && hasCheckedDisclaimer) {
       if (!isDisclaimerOpen && !profile.isLoggedIn) {
         setIsEntryGateOpen(true);
       } else {
         setIsEntryGateOpen(false);
       }
     }
-  }, [sessionLoading, profile.isLoggedIn, isDisclaimerOpen]);
+  }, [sessionLoading, hasCheckedDisclaimer, profile.isLoggedIn, isDisclaimerOpen]);
 
   // Synchronize active hunter profile to localStorage for Phaser scenes & API routes
   useEffect(() => {
@@ -473,6 +495,14 @@ export default function GamePage() {
 
   // User Action: Acknowledge Disclaimer and Proceed
   const handleProceedDisclaimer = () => {
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(DISCLAIMER_STORAGE_KEY, "true");
+      } catch {}
+      try {
+        sessionStorage.setItem(DISCLAIMER_STORAGE_KEY, "true");
+      } catch {}
+    }
     setIsDisclaimerOpen(false);
     if (!profile.isLoggedIn) {
       setIsEntryGateOpen(true);
@@ -1310,7 +1340,11 @@ export default function GamePage() {
       />
 
       {/* 5.5. Mandatory Initial Notice & Disclaimer Window */}
-      <DisclaimerModal isOpen={isDisclaimerOpen} onProceed={handleProceedDisclaimer} />
+      <DisclaimerModal
+        isOpen={isDisclaimerOpen}
+        onProceed={handleProceedDisclaimer}
+        onClose={() => setIsDisclaimerOpen(false)}
+      />
 
       {/* 6. Entry Gate Onboarding / Authentication Window */}
       <EntryGateModal
