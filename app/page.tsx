@@ -1310,10 +1310,7 @@ export default function GamePage() {
       />
 
       {/* 5.5. Mandatory Initial Notice & Disclaimer Window */}
-      <DisclaimerModal
-        isOpen={isDisclaimerOpen}
-        onProceed={handleProceedDisclaimer}
-      />
+      <DisclaimerModal isOpen={isDisclaimerOpen} onProceed={handleProceedDisclaimer} />
 
       {/* 6. Entry Gate Onboarding / Authentication Window */}
       <EntryGateModal

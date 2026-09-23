@@ -9,10 +9,7 @@ interface DisclaimerModalProps {
   onProceed: () => void;
 }
 
-export const DisclaimerModal: React.FC<DisclaimerModalProps> = ({
-  isOpen,
-  onProceed,
-}) => {
+export const DisclaimerModal: React.FC<DisclaimerModalProps> = ({ isOpen, onProceed }) => {
   if (!isOpen) return null;
 
   const handleProceedClick = () => {
@@ -39,7 +36,7 @@ export const DisclaimerModal: React.FC<DisclaimerModalProps> = ({
 
         {/* Header & Badges */}
         <div className="mb-6 flex flex-col items-center space-y-2.5 text-center">
-          <p className="font-mono text-[11px] sm:text-[12px] font-semibold uppercase tracking-[0.24em] text-[#eaba49]">
+          <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.24em] text-[#eaba49] sm:text-[12px]">
             THE CRYPTID INSTITUTE // COMMUNITY NOTICE
           </p>
 
@@ -57,7 +54,7 @@ export const DisclaimerModal: React.FC<DisclaimerModalProps> = ({
         </div>
 
         {/* Main Disclaimer Box */}
-        <div className="relative mb-6 overflow-hidden rounded-xl border border-[#3a475c] bg-[#0f1216]/95 p-4 sm:p-5 shadow-inner">
+        <div className="relative mb-6 overflow-hidden rounded-xl border border-[#3a475c] bg-[#0f1216]/95 p-4 shadow-inner sm:p-5">
           {/* Subtle Ambient Light Wash */}
           <div
             className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-[#eaba49]/5 blur-2xl"
@@ -71,21 +68,25 @@ export const DisclaimerModal: React.FC<DisclaimerModalProps> = ({
 
             <div className="space-y-3 text-left">
               {/* Point 1: Imagination & Developer notice */}
-              <p className="font-sans text-xs sm:text-sm leading-relaxed text-[#ffddcc]">
-                <strong className="font-semibold text-[#eaba49]">Independent Creation:</strong>{" "}
-                This game is a work of imagination brought together independently by a community developer.
+              <p className="font-sans text-xs leading-relaxed text-[#ffddcc] sm:text-sm">
+                <strong className="font-semibold text-[#eaba49]">Independent Creation:</strong> This game is a
+                work of imagination brought together independently by a community developer.
               </p>
 
               {/* Point 2: No affiliation */}
-              <p className="font-sans text-xs sm:text-sm leading-relaxed text-[#c9ccd2]">
-                <strong className="font-semibold text-[#eaba49]">No Official Affiliation:</strong>{" "}
-                It has <span className="text-[#ffddcc] font-medium">no official connection, endorsement, or partnership</span> with the official Bitfoots project.
+              <p className="font-sans text-xs leading-relaxed text-[#c9ccd2] sm:text-sm">
+                <strong className="font-semibold text-[#eaba49]">No Official Affiliation:</strong> It has{" "}
+                <span className="font-medium text-[#ffddcc]">
+                  no official connection, endorsement, or partnership
+                </span>{" "}
+                with the official Bitfoots project.
               </p>
 
               {/* Point 3: Liability */}
-              <p className="font-sans text-xs sm:text-sm leading-relaxed text-[#c9ccd2]">
-                <strong className="font-semibold text-[#eaba49]">Disclaimer of Liability:</strong>{" "}
-                Under no circumstances shall the official Bitfoots account, team, or entity be held responsible or liable for any situation, interaction, or outcome arising from this game.
+              <p className="font-sans text-xs leading-relaxed text-[#c9ccd2] sm:text-sm">
+                <strong className="font-semibold text-[#eaba49]">Disclaimer of Liability:</strong> Under no
+                circumstances shall the official Bitfoots account, team, or entity be held responsible or
+                liable for any situation, interaction, or outcome arising from this game.
               </p>
             </div>
           </div>
